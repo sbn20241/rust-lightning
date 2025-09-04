@@ -80,6 +80,12 @@ fn params_from_invoice(
 		payment_params = payment_params.with_bolt11_features(features.clone()).unwrap();
 	}
 
+	let rgb_payment =
+	invoice.rgb_amount().and_then(|amt| invoice.rgb_contract_id().map(|cid| (cid, amt)));
+
+    let route_params =
+	RouteParameters::from_payment_params_and_value(payment_params, amount_msat, rgb_payment);
+
 	let route_params = RouteParameters::from_payment_params_and_value(payment_params, amount_msat);
 	(payment_hash, recipient_onion, route_params)
 }
