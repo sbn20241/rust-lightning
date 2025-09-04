@@ -10,7 +10,7 @@ use super::{
 	constants, Bolt11Invoice, Bolt11InvoiceFeatures, Bolt11InvoiceSignature, Currency, Description,
 	ExpiryTime, Fallback, MinFinalCltvExpiryDelta, PayeePubKey, PaymentSecret, PositiveTimestamp,
 	PrivateRoute, RawDataPart, RawHrp, RawTaggedField, RouteHintHop, Sha256, SiPrefix,
-	SignedRawBolt11Invoice, TaggedField,
+	SignedRawBolt11Invoice, TaggedField, RgbAmount, RgbContractId
 };
 
 /// Objects that can be encoded to base32 (bech32).
@@ -388,6 +388,31 @@ impl Base32Iterable for PrivateRoute {
 impl Base32Len for PrivateRoute {
 	fn base32_len(&self) -> usize {
 		bytes_size_to_base32_size((self.0).0.len() * 51)
+	}
+}
+
+
+impl ToBase32 for RgbAmount {
+	fn write_base32<W: WriteBase32>(&self, writer: &mut W) -> Result<(), <W as WriteBase32>::Err> {
+		writer.write(&encode_int_be_base32(self.0))
+	}
+}
+
+impl Base32Len for RgbAmount {
+	fn base32_len(&self) -> usize {
+		encoded_int_be_base32_size(self.0)
+	}
+}
+
+impl ToBase32 for RgbContractId {
+	fn write_base32<W: WriteBase32>(&self, writer: &mut W) -> Result<(), <W as WriteBase32>::Err> {
+		self.0.to_string().as_bytes().write_base32(writer)
+	}
+}
+
+impl Base32Len for RgbContractId {
+	fn base32_len(&self) -> usize {
+		self.0.to_string().as_bytes().base32_len()
 	}
 }
 

@@ -51,6 +51,13 @@ impl_fmt_traits! {
 		const LENGTH: usize = 32;
 	}
 }
+impl PaymentHash {
+	/// Create a payment hash consisting of all-zeros data (e.g. when uninitialized or a placeholder).
+	pub fn new_zero() -> Self {
+		Self([0; 32])
+	}
+}
+
 
 /// Converts a `PaymentPreimage` into a `PaymentHash` by hashing the preimage with SHA256.
 impl From<PaymentPreimage> for PaymentHash {
