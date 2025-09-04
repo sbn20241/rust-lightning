@@ -29,6 +29,8 @@ use crate::routing::scoring::WriteableScore;
 use crate::sign::{ecdsa::EcdsaChannelSigner, EntropySource, SignerProvider};
 use crate::util::logger::Logger;
 use crate::util::ser::{Readable, ReadableArgs, Writeable};
+use std::path::PathBuf;
+
 
 /// The alphabet of characters allowed for namespaces and keys.
 pub const KVSTORE_NAMESPACE_KEY_ALPHABET: &str =
@@ -319,7 +321,7 @@ impl<ChannelSigner: EcdsaChannelSigner, K: KVStore + ?Sized> Persist<ChannelSign
 
 /// Read previously persisted [`ChannelMonitor`]s from the store.
 pub fn read_channel_monitors<K: Deref, ES: Deref, SP: Deref>(
-	kv_store: K, entropy_source: ES, signer_provider: SP,
+	kv_store: K, entropy_source: ES, signer_provider: SP, ldk_data_dir: PathBuf,
 ) -> Result<Vec<(BlockHash, ChannelMonitor<<SP::Target as SignerProvider>::EcdsaSigner>)>, io::Error>
 where
 	K::Target: KVStore,
@@ -353,7 +355,7 @@ where
 				CHANNEL_MONITOR_PERSISTENCE_SECONDARY_NAMESPACE,
 				&stored_key,
 			)?),
-			(&*entropy_source, &*signer_provider),
+			(&*entropy_source, &*signer_provider, ldk_data_dir.clone()),
 		) {
 			Ok((block_hash, channel_monitor)) => {
 				if channel_monitor.get_funding_txo().0.txid != txid
@@ -476,6 +478,7 @@ where
 	signer_provider: SP,
 	broadcaster: BI,
 	fee_estimator: FE,
+	ldk_data_dir: PathBuf,
 }
 
 #[allow(dead_code)]
@@ -508,6 +511,7 @@ where
 	pub fn new(
 		kv_store: K, logger: L, maximum_pending_updates: u64, entropy_source: ES,
 		signer_provider: SP, broadcaster: BI, fee_estimator: FE,
+		ldk_data_dir: PathBuf,
 	) -> Self {
 		MonitorUpdatingPersister {
 			kv_store,
@@ -517,6 +521,7 @@ where
 			signer_provider,
 			broadcaster,
 			fee_estimator,
+			ldk_data_dir,
 		}
 	}
 

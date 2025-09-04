@@ -21,6 +21,9 @@ pub const MAX_SCID_TX_INDEX: u64 = 0x00ffffff;
 /// value is based on the 2-bytes available for the vout index.
 pub const MAX_SCID_VOUT_INDEX: u64 = 0xffff;
 
+/// We set this flag to the short channel id to signal that we're doing a swap
+pub const IS_SWAP_SCID: u64 = 0x80000000_00000000;
+
 /// A `short_channel_id` construction error
 #[derive(Debug, PartialEq, Eq)]
 pub enum ShortChannelIdError {
@@ -180,6 +183,14 @@ pub(crate) mod fake_scid {
 			&& valid_vout == scid_utils::vout_from_scid(scid) as u8
 	}
 
+	pub fn is_valid_swap(scid: u64) -> bool {
+		scid & scid_utils::IS_SWAP_SCID > 0
+	}
+
+	pub fn get_real_swap_scid(scid: u64) -> u64 {
+		scid & !scid_utils::IS_SWAP_SCID
+	}
+
 	#[cfg(test)]
 	mod tests {
 		use bitcoin::constants::ChainHash;
@@ -303,3 +314,4 @@ mod tests {
 		assert_eq!(scid_from_parts(0x00000000, 0x00000000, 0x010000).err().unwrap(), ShortChannelIdError::VoutIndexOverflow);
 	}
 }
+
