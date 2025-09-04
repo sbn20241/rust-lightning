@@ -2851,7 +2851,7 @@ impl<'a> Writeable for OutboundTrampolinePayload<'a> {
 				_encode_varint_length_prefixed_tlv!(w, {
 					(2, HighZeroBytesDroppedBigSize(*amt_to_forward), required),
 					(4, HighZeroBytesDroppedBigSize(*outgoing_cltv_value), required),
-					(14, outgoing_node_id, required),
+					(14, outgoing_node_id, required)
 				});
 			},
 			Self::LegacyBlindedPathEntry { amt_to_forward, outgoing_cltv_value, payment_paths, invoice_features } => {
