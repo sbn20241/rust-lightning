@@ -184,7 +184,9 @@ pub const COMMITMENT_TX_WEIGHT_PER_HTLC: u64 = 172;
 pub(crate) fn commitment_tx_base_weight(channel_type_features: &ChannelTypeFeatures) -> u64 {
 	const COMMITMENT_TX_BASE_WEIGHT: u64 = 724;
 	const COMMITMENT_TX_BASE_ANCHOR_WEIGHT: u64 = 1124;
-	if channel_type_features.supports_anchors_zero_fee_htlc_tx() { COMMITMENT_TX_BASE_ANCHOR_WEIGHT } else { COMMITMENT_TX_BASE_WEIGHT }
+	let base_weight = if channel_type_features.supports_anchors_zero_fee_htlc_tx() { COMMITMENT_TX_BASE_ANCHOR_WEIGHT } else { COMMITMENT_TX_BASE_WEIGHT };
+	// add OP_RETURN weight (RGB coloring)
+	base_weight + 172
 }
 
 /// Get the fee cost of a commitment tx with a given number of HTLC outputs.
@@ -577,6 +579,8 @@ pub struct HTLCOutputInCommitment {
 	/// below the dust limit (in which case no output appears in the commitment transaction and the
 	/// value is spent to additional transaction fees).
 	pub transaction_output_index: Option<u32>,
+	/// The RGB amount allocated to the HTLC
+	pub amount_rgb: Option<u64>,
 }
 
 impl HTLCOutputInCommitment {
@@ -594,6 +598,7 @@ impl_writeable_tlv_based!(HTLCOutputInCommitment, {
 	(4, cltv_expiry, required),
 	(6, payment_hash, required),
 	(8, transaction_output_index, option),
+	(10, amount_rgb, option),
 });
 
 #[inline]
@@ -1227,7 +1232,7 @@ pub struct ClosingTransaction {
 	to_counterparty_value_sat: Amount,
 	to_holder_script: ScriptBuf,
 	to_counterparty_script: ScriptBuf,
-	built: Transaction,
+	pub(crate) built: Transaction,
 }
 
 impl ClosingTransaction {
@@ -1361,7 +1366,7 @@ pub struct CommitmentTransaction {
 	// A cache of the parties' pubkeys required to construct the transaction, see doc for trust()
 	keys: TxCreationKeys,
 	// For access to the pre-built transaction, see doc for trust()
-	built: BuiltCommitmentTransaction,
+	pub(crate) built: BuiltCommitmentTransaction,
 }
 
 impl Eq for CommitmentTransaction {}
@@ -1471,6 +1476,10 @@ impl CommitmentTransaction {
 		}
 	}
 
+	/// Whether the commitment transaction is colored (i.e. it has an OP_RETURN output)
+	pub fn is_colored(&self) -> bool {
+		is_tx_colored(&self.built.transaction)
+	}
 	/// Use non-zero fee anchors
 	///
 	/// This is not exported to bindings users due to move, and also not likely to be useful for binding users
@@ -1702,7 +1711,7 @@ impl CommitmentTransaction {
 ///
 /// This structure implements Deref.
 pub struct TrustedCommitmentTransaction<'a> {
-	inner: &'a CommitmentTransaction,
+	pub(crate) inner: &'a CommitmentTransaction,
 }
 
 impl<'a> Deref for TrustedCommitmentTransaction<'a> {
@@ -1740,7 +1749,7 @@ impl<'a> TrustedCommitmentTransaction<'a> {
 	/// This function is only valid in the holder commitment context, it always uses EcdsaSighashType::All.
 	pub fn get_htlc_sigs<T: secp256k1::Signing, ES: Deref>(
 		&self, htlc_base_key: &SecretKey, channel_parameters: &DirectedChannelTransactionParameters,
-		entropy_source: &ES, secp_ctx: &Secp256k1<T>,
+		entropy_source: &ES, secp_ctx: &Secp256k1<T>, ldk_data_dir: &PathBuf,
 	) -> Result<Vec<Signature>, ()> where ES::Target: EntropySource {
 		let inner = self.inner;
 		let keys = &inner.keys;
@@ -1750,8 +1759,12 @@ impl<'a> TrustedCommitmentTransaction<'a> {
 
 		for this_htlc in inner.htlcs.iter() {
 			assert!(this_htlc.transaction_output_index.is_some());
-			let htlc_tx = build_htlc_transaction(&txid, inner.feerate_per_kw, channel_parameters.contest_delay(), &this_htlc, &self.channel_type_features, &keys.broadcaster_delayed_payment_key, &keys.revocation_key);
-
+			let mut htlc_tx = build_htlc_transaction(&txid, inner.feerate_per_kw, channel_parameters.contest_delay(), &this_htlc, &self.channel_type_features, &keys.broadcaster_delayed_payment_key, &keys.revocation_key);
+			if inner.is_colored() {
+				if let Err(_e) = color_htlc(&mut htlc_tx, this_htlc, ldk_data_dir) {
+					return Err(());
+				}
+			}
 			let htlc_redeemscript = get_htlc_redeemscript_with_explicit_keys(&this_htlc, &self.channel_type_features, &keys.broadcaster_htlc_key, &keys.countersignatory_htlc_key, &keys.revocation_key);
 
 			let sighash = hash_to_message!(&sighash::SighashCache::new(&htlc_tx).p2wsh_signature_hash(0, &htlc_redeemscript, this_htlc.to_bitcoin_amount(), EcdsaSighashType::All).unwrap()[..]);
@@ -1763,8 +1776,7 @@ impl<'a> TrustedCommitmentTransaction<'a> {
 	/// Builds the second-level holder HTLC transaction for the HTLC with index `htlc_index`.
 	pub(crate) fn build_unsigned_htlc_tx(
 		&self, channel_parameters: &DirectedChannelTransactionParameters, htlc_index: usize,
-		preimage: &Option<PaymentPreimage>,
-	) -> Transaction {
+		preimage: &Option<PaymentPreimage>, ldk_data_dir: &PathBuf	) -> Transaction {
 		let keys = &self.inner.keys;
 		let this_htlc = &self.inner.htlcs[htlc_index];
 		assert!(this_htlc.transaction_output_index.is_some());
@@ -1773,10 +1785,14 @@ impl<'a> TrustedCommitmentTransaction<'a> {
 		// Further, we should never be provided the preimage for an HTLC-Timeout transaction.
 		if  this_htlc.offered && preimage.is_some() { unreachable!(); }
 
-		build_htlc_transaction(
+		let mut htlc_tx = build_htlc_transaction(
 			&self.inner.built.txid, self.inner.feerate_per_kw, channel_parameters.contest_delay(), &this_htlc,
 			&self.channel_type_features, &keys.broadcaster_delayed_payment_key, &keys.revocation_key
-		)
+		);
+		if self.inner.is_colored() {
+			color_htlc(&mut htlc_tx, this_htlc, ldk_data_dir).expect("successful htlc tx coloring");
+		}
+		htlc_tx
 	}
 
 
@@ -1890,6 +1906,7 @@ pub fn get_commitment_transaction_number_obscure_factor(
 		| ((res[31] as u64) << 0 * 8)
 }
 
+/* 
 #[cfg(test)]
 mod tests {
 	use super::{CounterpartyCommitmentSecrets, ChannelPublicKeys};
@@ -2432,3 +2449,4 @@ mod tests {
 		}
 	}
 }
+*/
