@@ -1632,7 +1632,7 @@ trait InitialRemoteCommitmentReceiver<SP: Deref> where SP::Target: SignerProvide
 		                                          &context.channel_transaction_parameters, context.is_outbound(),
 		                                          funding_redeemscript.clone(), context.channel_value_satoshis,
 		                                          obscure_factor,
-		                                          holder_commitment_tx, best_block, context.counterparty_node_id, self.context.channel_id(), self.context.ldk_data_dir.clone());
+		                                          holder_commitment_tx, best_block, context.counterparty_node_id, context.channel_id());
 		channel_monitor.provide_initial_counterparty_commitment_tx(
 			counterparty_initial_bitcoin_tx.txid, Vec::new(),
 			counterparty_commitment_number,

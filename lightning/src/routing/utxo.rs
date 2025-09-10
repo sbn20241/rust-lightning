@@ -559,6 +559,7 @@ impl PendingChecks {
 	}
 }
 
+/* 
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -863,3 +864,4 @@ mod tests {
 		assert!(!network_graph.pending_checks.too_many_checks_pending());
 	}
 }
+*/

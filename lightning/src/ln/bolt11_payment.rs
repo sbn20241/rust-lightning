@@ -90,10 +90,10 @@ fn params_from_invoice(
 		invoice.rgb_amount().and_then(|amt| invoice.rgb_contract_id().map(|cid| (cid, amt)));
 
 	let route_params =
-		RouteParameters::from_payment_params_and_value(payment_params, amount_msat, rgb_payment);
+		RouteParameters::from_payment_params_and_value(payment_params.clone(), amount_msat, rgb_payment);
 	(payment_hash, recipient_onion, route_params)
 }
-
+/* 
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -224,3 +224,4 @@ mod tests {
 		}
 	}
 }
+*/

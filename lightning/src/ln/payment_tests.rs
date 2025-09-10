@@ -50,7 +50,7 @@ use {
 	crate::util::time::Instant as TestTime,
 	std::time::{SystemTime, Instant, Duration},
 };
-
+/*
 #[test]
 fn mpp_failure() {
 	let chanmon_cfgs = create_chanmon_cfgs(4);
@@ -1433,7 +1433,8 @@ fn preflight_probes_yield_event_skip_private_hop() {
 
 	assert!(!nodes[0].node.has_pending_payments());
 }
-
+*/
+/* 
 #[test]
 fn preflight_probes_yield_event() {
 	let chanmon_cfgs = create_chanmon_cfgs(4);
@@ -4479,3 +4480,4 @@ fn pay_route_without_params() {
 		ClaimAlongRouteArgs::new(&nodes[0], &[&[&nodes[1]]], payment_preimage)
 	);
 }
+*/

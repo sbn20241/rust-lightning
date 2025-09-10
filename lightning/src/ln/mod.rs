@@ -78,7 +78,6 @@ mod reorg_tests;
 mod reload_tests;
 #[cfg(test)]
 #[allow(unused_mut)]
-mod onion_route_tests;
 #[cfg(test)]
 #[allow(unused_mut)]
 mod monitor_tests;

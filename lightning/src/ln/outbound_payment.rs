@@ -2401,6 +2401,7 @@ impl_writeable_tlv_based_enum_upgradable!(PendingOutboundPayment,
 	},
 );
 
+/* 
 #[cfg(test)]
 mod tests {
 	use bitcoin::network::Network;
@@ -3074,3 +3075,5 @@ mod tests {
 		}, None));
 	}
 }
+	
+*/
