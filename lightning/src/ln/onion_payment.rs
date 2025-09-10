@@ -19,6 +19,10 @@ use crate::ln::onion_utils;
 use crate::ln::onion_utils::{HTLCFailReason, INVALID_ONION_BLINDING};
 use crate::sign::{NodeSigner, Recipient};
 use crate::util::logger::Logger;
+use crate::rgb_utils::{filter_first_hops, get_rgb_payment_info_path, is_payment_rgb, parse_rgb_payment_info};
+use std::path::PathBuf;
+
+
 
 #[allow(unused_imports)]
 use crate::prelude::*;
@@ -76,13 +80,13 @@ pub(super) fn create_fwd_pending_htlc_info(
 
 	let (
 		short_channel_id, amt_to_forward, outgoing_cltv_value, intro_node_blinding_point,
-		next_blinding_override
+		next_blinding_override, outgoing_amount_rgb
 	) = match hop_data {
-		msgs::InboundOnionPayload::Forward { short_channel_id, amt_to_forward, outgoing_cltv_value } =>
-			(short_channel_id, amt_to_forward, outgoing_cltv_value, None, None),
+		msgs::InboundOnionPayload::Forward { short_channel_id, amt_to_forward, outgoing_cltv_value, rgb_amount_to_forward } =>
+		(short_channel_id, amt_to_forward, outgoing_cltv_value, None, None, rgb_amount_to_forward),
 		msgs::InboundOnionPayload::BlindedForward {
 			short_channel_id, payment_relay, payment_constraints, intro_node_blinding_point, features,
-			next_blinding_override,
+			next_blinding_override, rgb_amount_to_forward
 		} => {
 			let (amt_to_forward, outgoing_cltv_value) = check_blinded_forward(
 				msg.amount_msat, msg.cltv_expiry, &payment_relay, &payment_constraints, &features
@@ -96,7 +100,7 @@ pub(super) fn create_fwd_pending_htlc_info(
 				}
 			})?;
 			(short_channel_id, amt_to_forward, outgoing_cltv_value, intro_node_blinding_point,
-			 next_blinding_override)
+			 next_blinding_override, rgb_amount_to_forward)
 		},
 		msgs::InboundOnionPayload::Receive { .. } | msgs::InboundOnionPayload::BlindedReceive { .. } =>
 			return Err(InboundHTLCErr {
@@ -126,28 +130,31 @@ pub(super) fn create_fwd_pending_htlc_info(
 		outgoing_amt_msat: amt_to_forward,
 		outgoing_cltv_value,
 		skimmed_fee_msat: None,
+		ingoing_amount_rgb: msg.amount_rgb,
+		outgoing_amount_rgb,
 	})
 }
 
 pub(super) fn create_recv_pending_htlc_info(
 	hop_data: msgs::InboundOnionPayload, shared_secret: [u8; 32], payment_hash: PaymentHash,
 	amt_msat: u64, cltv_expiry: u32, phantom_shared_secret: Option<[u8; 32]>, allow_underpay: bool,
-	counterparty_skimmed_fee_msat: Option<u64>, current_height: u32
+	counterparty_skimmed_fee_msat: Option<u64>, current_height: u32,ingoing_amount_rgb: Option<u64>
 ) -> Result<PendingHTLCInfo, InboundHTLCErr> {
 	let (
 		payment_data, keysend_preimage, custom_tlvs, onion_amt_msat, onion_cltv_expiry,
-		payment_metadata, payment_context, requires_blinded_error, has_recipient_created_payment_secret
+		payment_metadata, payment_context, requires_blinded_error, has_recipient_created_payment_secret,
+		rgb_amount_to_forward,
 	) = match hop_data {
 		msgs::InboundOnionPayload::Receive {
 			payment_data, keysend_preimage, custom_tlvs, sender_intended_htlc_amt_msat,
-			cltv_expiry_height, payment_metadata, ..
+			cltv_expiry_height, payment_metadata, rgb_amount_to_forward, ..
 		} =>
 			(payment_data, keysend_preimage, custom_tlvs, sender_intended_htlc_amt_msat,
-			 cltv_expiry_height, payment_metadata, None, false, keysend_preimage.is_none()),
+			 cltv_expiry_height, payment_metadata, None, false, keysend_preimage.is_none(), rgb_amount_to_forward),
 		msgs::InboundOnionPayload::BlindedReceive {
 			sender_intended_htlc_amt_msat, total_msat, cltv_expiry_height, payment_secret,
 			intro_node_blinding_point, payment_constraints, payment_context, keysend_preimage,
-			custom_tlvs
+			custom_tlvs, rgb_amount_to_forward
 		} => {
 			check_blinded_payment_constraints(
 				sender_intended_htlc_amt_msat, cltv_expiry, &payment_constraints
@@ -162,7 +169,7 @@ pub(super) fn create_recv_pending_htlc_info(
 			let payment_data = msgs::FinalOnionHopData { payment_secret, total_msat };
 			(Some(payment_data), keysend_preimage, custom_tlvs,
 			 sender_intended_htlc_amt_msat, cltv_expiry_height, None, Some(payment_context),
-			 intro_node_blinding_point.is_none(), true)
+			 intro_node_blinding_point.is_none(), true, rgb_amount_to_forward)
 		}
 		msgs::InboundOnionPayload::Forward { .. } => {
 			return Err(InboundHTLCErr {
@@ -213,6 +220,25 @@ pub(super) fn create_recv_pending_htlc_info(
 			msg: "Upstream node sent less than we were supposed to receive in payment",
 		});
 	}
+	match (rgb_amount_to_forward, ingoing_amount_rgb) {
+		(Some(_), None) | (None, Some(_)) => {
+			return Err(InboundHTLCErr {
+				err_code: 19,
+				err_data: vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+				msg: "Upstream node didn't send what we expected",
+			});
+		},
+		(None, None) => {},
+		(Some(x), Some(y)) if x <= y => {},
+		_ => {
+			return Err(InboundHTLCErr {
+				err_code: 19,
+				err_data: vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+				msg: "The payment's RGB is lower than expected",
+			});
+
+		}
+	}
 
 	let routing = if let Some(payment_preimage) = keysend_preimage {
 		// We need to check that the sender knows the keysend preimage before processing this
@@ -262,6 +288,8 @@ pub(super) fn create_recv_pending_htlc_info(
 		outgoing_amt_msat: onion_amt_msat,
 		outgoing_cltv_value: onion_cltv_expiry,
 		skimmed_fee_msat: counterparty_skimmed_fee_msat,
+		ingoing_amount_rgb,
+		outgoing_amount_rgb: rgb_amount_to_forward,
 	})
 }
 
@@ -327,7 +355,7 @@ where
 		onion_utils::Hop::Receive(received_data) => {
 			create_recv_pending_htlc_info(
 				received_data, shared_secret, msg.payment_hash, msg.amount_msat, msg.cltv_expiry,
-				None, allow_skimmed_fees, msg.skimmed_fee_msat, cur_height
+				None, allow_skimmed_fees, msg.skimmed_fee_msat, cur_height, msg.amount_rgb
 			)?
 		}
 	})
@@ -423,7 +451,7 @@ where
 	let next_packet_details = match next_hop {
 		onion_utils::Hop::Forward {
 			next_hop_data: msgs::InboundOnionPayload::Forward {
-				short_channel_id, amt_to_forward, outgoing_cltv_value
+				short_channel_id, amt_to_forward, outgoing_cltv_value, ..
 			}, ..
 		} => {
 			let next_packet_pubkey = onion_utils::next_hop_pubkey(secp_ctx,

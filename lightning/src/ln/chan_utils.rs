@@ -38,7 +38,9 @@ use bitcoin::ecdsa::Signature as BitcoinSignature;
 use bitcoin::secp256k1::{SecretKey, PublicKey, Scalar};
 use bitcoin::secp256k1::{Secp256k1, ecdsa::Signature, Message};
 use bitcoin::{secp256k1, Sequence, Witness};
+use crate::rgb_utils::{color_htlc, is_tx_colored};
 
+use std::path::PathBuf;
 use crate::io;
 use core::cmp;
 use crate::util::transaction_utils::sort_outputs;

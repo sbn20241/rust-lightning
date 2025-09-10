@@ -20,6 +20,7 @@ use crate::util::logger::{Logger, Record};
 use bitcoin::secp256k1::PublicKey;
 use alloc::collections::{btree_map, BTreeMap};
 use core::ops::Deref;
+use rgb_lib::ContractId;
 use core::time::Duration;
 #[cfg(not(feature = "std"))]
 use core::iter::Iterator;
@@ -271,6 +272,7 @@ where
 					cltv_expiry_delta: MIN_CLTV_EXPIRY_DELTA,
 					htlc_minimum_msat: None,
 					htlc_maximum_msat: None,
+					htlc_maximum_rgb: None,
 				});
 				hint
 			});
@@ -330,7 +332,7 @@ fn rotate_through_iterators<T, I: Iterator<Item = T>>(mut vecs: Vec<I>) -> impl 
 /// [`MIN_FINAL_CLTV_EXPIRY_DETLA`]: crate::ln::channelmanager::MIN_FINAL_CLTV_EXPIRY_DELTA
 pub fn create_invoice_from_channelmanager<M: Deref, T: Deref, ES: Deref, NS: Deref, SP: Deref, F: Deref, R: Deref, MR: Deref, L: Deref>(
 	channelmanager: &ChannelManager<M, T, ES, NS, SP, F, R, MR, L>, amt_msat: Option<u64>,
-	description: String, invoice_expiry_delta_secs: u32, min_final_cltv_expiry_delta: Option<u16>,
+	description: String, invoice_expiry_delta_secs: u32, min_final_cltv_expiry_delta: Option<u16>, contract_id: Option<ContractId>, amt_rgb: Option<u64>,
 ) -> Result<Bolt11Invoice, SignOrCreationError<()>>
 where
 	M::Target: chain::Watch<<SP::Target as SignerProvider>::EcdsaSigner>,
@@ -350,6 +352,8 @@ where
 		invoice_expiry_delta_secs: Some(invoice_expiry_delta_secs),
 		min_final_cltv_expiry_delta,
 		payment_hash: None,
+		contract_id: contract_id,
+		amt_rgb: amt_rgb,
 	};
 	channelmanager.create_bolt11_invoice(params)
 }
@@ -408,7 +412,7 @@ where
 pub fn create_invoice_from_channelmanager_with_description_hash_and_payment_hash<M: Deref, T: Deref, ES: Deref, NS: Deref, SP: Deref, F: Deref, R: Deref, MR: Deref, L: Deref>(
 	channelmanager: &ChannelManager<M, T, ES, NS, SP, F, R, MR, L>, amt_msat: Option<u64>,
 	description_hash: Sha256, invoice_expiry_delta_secs: u32, payment_hash: PaymentHash,
-	min_final_cltv_expiry_delta: Option<u16>,
+	min_final_cltv_expiry_delta: Option<u16>, contract_id: Option<ContractId>, amt_rgb: Option<u64>,
 ) -> Result<Bolt11Invoice, SignOrCreationError<()>>
 where
 	M::Target: chain::Watch<<SP::Target as SignerProvider>::EcdsaSigner>,

@@ -356,12 +356,12 @@ fn updates_shutdown_wait() {
 
 	let payment_params_1 = PaymentParameters::from_node_id(nodes[1].node.get_our_node_id(), TEST_FINAL_CLTV)
 		.with_bolt11_features(nodes[1].node.bolt11_invoice_features()).unwrap();
-	let route_params = RouteParameters::from_payment_params_and_value(payment_params_1, 100_000);
+	let route_params = RouteParameters::from_payment_params_and_value(payment_params_1, 100_000, None);
 	let route_1 = get_route(&nodes[0].node.get_our_node_id(), &route_params,
 		&nodes[0].network_graph.read_only(), None, &logger, &scorer, &Default::default(), &random_seed_bytes).unwrap();
 	let payment_params_2 = PaymentParameters::from_node_id(nodes[0].node.get_our_node_id(), TEST_FINAL_CLTV)
 		.with_bolt11_features(nodes[0].node.bolt11_invoice_features()).unwrap();
-	let route_params = RouteParameters::from_payment_params_and_value(payment_params_2, 100_000);
+	let route_params = RouteParameters::from_payment_params_and_value(payment_params_2, 100_000, None);
 	let route_2 = get_route(&nodes[1].node.get_our_node_id(), &route_params,
 		&nodes[1].network_graph.read_only(), None, &logger, &scorer, &Default::default(), &random_seed_bytes).unwrap();
 	unwrap_send_err!(nodes[0], nodes[0].node.send_payment_with_route(route_1, payment_hash,
@@ -442,7 +442,7 @@ fn do_htlc_fail_async_shutdown(blinded_recipient: bool) {
 			&chanmon_cfgs[2].keys_manager)
 	} else {
 		RouteParameters::from_payment_params_and_value(
-			PaymentParameters::from_node_id(nodes[2].node.get_our_node_id(), TEST_FINAL_CLTV), amt_msat)
+			PaymentParameters::from_node_id(nodes[2].node.get_our_node_id(), TEST_FINAL_CLTV), amt_msat, None)
 	};
 	nodes[0].node.send_payment(our_payment_hash,
 		RecipientOnionFields::secret_only(our_payment_secret),

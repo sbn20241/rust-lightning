@@ -12,6 +12,7 @@
 use bitcoin::hashes::Hash;
 use bitcoin::hashes::sha256::Hash as Sha256;
 use bitcoin::secp256k1::{self, Secp256k1, SecretKey};
+use std::path::PathBuf;
 
 use crate::blinded_path::{IntroductionNode, NodeIdLookUp};
 use crate::events::{self, PaymentFailureReason};
@@ -755,6 +756,7 @@ pub(super) struct OutboundPayments {
 	pub(super) pending_outbound_payments: Mutex<HashMap<PaymentId, PendingOutboundPayment>>,
 	awaiting_invoice: AtomicBool,
 	retry_lock: Mutex<()>,
+	ldk_data_dir: PathBuf,
 }
 
 impl OutboundPayments {
@@ -1131,6 +1133,7 @@ impl OutboundPayments {
 								final_value_msat: *total_msat - *pending_amt_msat,
 								payment_params: params.clone(),
 								max_total_routing_fee_msat: *remaining_max_total_routing_fee_msat,
+								
 							}));
 							break
 						}
@@ -3075,5 +3078,5 @@ mod tests {
 		}, None));
 	}
 }
-	
+
 */

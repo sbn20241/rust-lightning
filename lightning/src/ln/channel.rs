@@ -7655,7 +7655,7 @@ impl<SP: Deref> Channel<SP> where
 			node_id_2: if were_node_one { counterparty_node_id } else { node_id },
 			bitcoin_key_1: NodeId::from_pubkey(if were_node_one { &self.context.get_holder_pubkeys().funding_pubkey } else { self.context.counterparty_funding_pubkey() }),
 			bitcoin_key_2: NodeId::from_pubkey(if were_node_one { self.context.counterparty_funding_pubkey() } else { &self.context.get_holder_pubkeys().funding_pubkey }),
-			contract_id,
+			contract_id: None,
 			excess_data: Vec::new(),
 		};
 
@@ -8181,12 +8181,12 @@ impl<SP: Deref> Channel<SP> where
 	pub fn send_htlc_and_commit<F: Deref, L: Deref>(
 		&mut self, amount_msat: u64, payment_hash: PaymentHash, cltv_expiry: u32,
 		source: HTLCSource, onion_routing_packet: msgs::OnionPacket, skimmed_fee_msat: Option<u64>,
-		fee_estimator: &LowerBoundedFeeEstimator<F>, logger: &L
+		fee_estimator: &LowerBoundedFeeEstimator<F>, logger: &L, amount_rgb: Option<u64>
 	) -> Result<Option<ChannelMonitorUpdate>, ChannelError>
 	where F::Target: FeeEstimator, L::Target: Logger
 	{
 		let send_res = self.send_htlc(amount_msat, payment_hash, cltv_expiry, source,
-			onion_routing_packet, false, skimmed_fee_msat, None, fee_estimator, logger);
+			onion_routing_packet, false, skimmed_fee_msat, None, fee_estimator, logger, amount_rgb);
 		if let Err(e) = &send_res { if let ChannelError::Ignore(_) = e {} else { debug_assert!(false, "Sending cannot trigger channel failure"); } }
 		match send_res? {
 			Some(_) => {
