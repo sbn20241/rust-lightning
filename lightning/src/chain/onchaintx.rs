@@ -1219,7 +1219,7 @@ impl<ChannelSigner: EcdsaChannelSigner> OnchainTxHandler<ChannelSigner> {
 				.unwrap();
 			let counterparty_htlc_sig = holder_commitment.counterparty_htlc_sigs[htlc_idx];
 			let mut htlc_tx = trusted_tx.build_unsigned_htlc_tx(
-				&self.channel_transaction_parameters.as_holder_broadcastable(), htlc_idx, preimage,
+				&self.channel_transaction_parameters.as_holder_broadcastable(), htlc_idx, preimage, &self.ldk_data_dir,
 			);
 
 			let htlc_descriptor = HTLCDescriptor {
