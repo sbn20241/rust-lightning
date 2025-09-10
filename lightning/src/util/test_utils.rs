@@ -218,6 +218,7 @@ impl<'a> Router for TestRouter<'a> {
 									cltv_expiry_delta: 0,
 									htlc_minimum_msat: None,
 									htlc_maximum_msat: None,
+									htlc_maximum_rgb: None,
 								};
 								let candidate = CandidateRouteHop::PrivateHop(PrivateHopCandidate {
 									hint: &route_hint,

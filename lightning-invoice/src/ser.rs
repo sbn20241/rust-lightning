@@ -392,9 +392,9 @@ impl Base32Len for PrivateRoute {
 }
 
 
-impl ToBase32 for RgbAmount {
-	fn write_base32<W: WriteBase32>(&self, writer: &mut W) -> Result<(), <W as WriteBase32>::Err> {
-		writer.write(&encode_int_be_base32(self.0))
+impl Base32Iterable for RgbAmount {
+	fn fe_iter<'s>(&'s self) -> Box<dyn Iterator<Item = Fe32> + 's> {
+		Box::new(encode_int_be_base32(self.0))
 	}
 }
 
@@ -404,9 +404,10 @@ impl Base32Len for RgbAmount {
 	}
 }
 
-impl ToBase32 for RgbContractId {
-	fn write_base32<W: WriteBase32>(&self, writer: &mut W) -> Result<(), <W as WriteBase32>::Err> {
-		self.0.to_string().as_bytes().write_base32(writer)
+impl Base32Iterable for RgbContractId {
+	fn fe_iter<'s>(&'s self) -> Box<dyn Iterator<Item = Fe32> + 's> {
+		let bytes = self.0.to_string().into_bytes();
+		Box::new(bytes.into_iter().bytes_to_fes())
 	}
 }
 
@@ -475,6 +476,12 @@ impl Base32Iterable for TaggedField {
 			},
 			TaggedField::Features(ref features) => {
 				write_tagged_field(constants::TAG_FEATURES, features)
+			},
+			TaggedField::RgbAmount(ref rgb_amount) => {
+				write_tagged_field(constants::TAG_RGB_AMOUNT, rgb_amount)
+			},
+			TaggedField::RgbContractId(ref rgb_contract_id) => {
+				write_tagged_field(constants::TAG_RGB_CONTRACT_ID, rgb_contract_id)
 			},
 		})
 	}

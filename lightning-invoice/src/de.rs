@@ -753,7 +753,7 @@ impl FromBase32 for RgbContractId {
 
 	fn from_base32(field_data: &[Fe32]) -> Result<RgbContractId, Bolt11ParseError> {
 		let bytes = Vec::<u8>::from_base32(field_data)?;
-		let rgb_contract_id_str = String::from(str::from_utf8(&bytes)?);
+		let rgb_contract_id_str = String::from_utf8(bytes)?;
 		match ContractId::from_str(&rgb_contract_id_str) {
 			Ok(cid) => Ok(RgbContractId(cid)),
 			Err(_) => Err(Bolt11ParseError::InvalidContractId),
@@ -1093,7 +1093,6 @@ mod test {
 			htlc_minimum_msat: None,
 			htlc_maximum_msat: None,
 			htlc_maximum_rgb: None,
-
 		});
 
 		assert_eq!(PrivateRoute::from_base32(&input), Ok(PrivateRoute(RouteHint(expected))));

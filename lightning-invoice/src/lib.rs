@@ -111,6 +111,7 @@ pub enum Bolt11ParseError {
 	InvalidRecoveryId,
 	// Invalid length, with actual length, expected length, and name of the element
 	InvalidSliceLength(usize, usize, &'static str),
+	InvalidContractId,
 
 	/// Not an error, but used internally to signal that a part of the invoice should be ignored
 	/// according to BOLT11
@@ -2257,6 +2258,7 @@ mod test {
 			cltv_expiry_delta: 0,
 			htlc_minimum_msat: None,
 			htlc_maximum_msat: None,
+			htlc_maximum_rgb: None,
 		};
 		let too_long_route = RouteHint(vec![route_hop; 13]);
 		let long_route_res =
@@ -2298,6 +2300,7 @@ mod test {
 				cltv_expiry_delta: 145,
 				htlc_minimum_msat: None,
 				htlc_maximum_msat: None,
+				htlc_maximum_rgb: None,
 			},
 			RouteHintHop {
 				src_node_id: public_key,
@@ -2306,6 +2309,7 @@ mod test {
 				cltv_expiry_delta: 146,
 				htlc_minimum_msat: None,
 				htlc_maximum_msat: None,
+				htlc_maximum_rgb: None,
 			},
 		]);
 
@@ -2317,6 +2321,7 @@ mod test {
 				cltv_expiry_delta: 147,
 				htlc_minimum_msat: None,
 				htlc_maximum_msat: None,
+				htlc_maximum_rgb: None,
 			},
 			RouteHintHop {
 				src_node_id: public_key,
@@ -2325,6 +2330,7 @@ mod test {
 				cltv_expiry_delta: 148,
 				htlc_minimum_msat: None,
 				htlc_maximum_msat: None,
+				htlc_maximum_rgb: None,
 			},
 		]);
 

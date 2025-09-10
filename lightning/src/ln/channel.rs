@@ -345,6 +345,7 @@ enum HTLCUpdateAwaitingACK {
 		// The extra fee we're skimming off the top of this HTLC.
 		skimmed_fee_msat: Option<u64>,
 		blinding_point: Option<PublicKey>,
+		amount_rgb: Option<u64>,
 	},
 	ClaimHTLC {
 		payment_preimage: PaymentPreimage,
@@ -1631,7 +1632,7 @@ trait InitialRemoteCommitmentReceiver<SP: Deref> where SP::Target: SignerProvide
 		                                          &context.channel_transaction_parameters, context.is_outbound(),
 		                                          funding_redeemscript.clone(), context.channel_value_satoshis,
 		                                          obscure_factor,
-		                                          holder_commitment_tx, best_block, context.counterparty_node_id, context.channel_id(), self.context.ldk_data_dir.clone()););
+		                                          holder_commitment_tx, best_block, context.counterparty_node_id, self.context.channel_id(), self.context.ldk_data_dir.clone());
 		channel_monitor.provide_initial_counterparty_commitment_tx(
 			counterparty_initial_bitcoin_tx.txid, Vec::new(),
 			counterparty_commitment_number,
@@ -5345,12 +5346,10 @@ impl<SP: Deref> Channel<SP> where
 				let fail_htlc_res = match &htlc_update {
 					&HTLCUpdateAwaitingACK::AddHTLC {
 						amount_msat, cltv_expiry, ref payment_hash, ref source, ref onion_routing_packet,
-						skimmed_fee_msat, blinding_point, ..
 						skimmed_fee_msat, blinding_point, amount_rgb, ..
 					} => {
 						match self.send_htlc(
 							amount_msat, *payment_hash, cltv_expiry, source.clone(), onion_routing_packet.clone(),
-							false, skimmed_fee_msat, blinding_point, fee_estimator, logger
 							false, skimmed_fee_msat, blinding_point, fee_estimator, logger, amount_rgb
 						) {
 							Ok(_) => update_add_count += 1,
@@ -8004,6 +8003,7 @@ impl<SP: Deref> Channel<SP> where
 			onion_routing_packet,
 			skimmed_fee_msat,
 			blinding_point,
+			amount_rgb
 		};
 		self.context.next_holder_htlc_id += 1;
 
