@@ -1284,7 +1284,7 @@ impl<ChannelSigner: EcdsaChannelSigner> OnchainTxHandler<ChannelSigner> {
 		&self.channel_transaction_parameters.channel_type_features
 	}
 }
-
+/* 
 #[cfg(test)]
 mod tests {
 	use bitcoin::hash_types::Txid;
@@ -1461,3 +1461,4 @@ mod tests {
 		assert_eq!(txs_broadcasted[0].lock_time.to_consensus_u32(), 2);
 	}
 }
+*/

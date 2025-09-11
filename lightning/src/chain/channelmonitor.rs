@@ -4195,7 +4195,7 @@ impl<Signer: EcdsaChannelSigner> ChannelMonitorImpl<Signer> {
 							"A matured HTLC transaction conflicts with a maturing one; failed to \
 							 call either transaction_unconfirmed for the conflicting transaction \
 							 or block_disconnected for a block containing it.");
-						matured_htlcs.push(source.clone());
+						matured_htlcs.push(&source);
 					}
 
 					log_debug!(logger, "HTLC {} failure update in {} has got enough confirmations to be passed upstream",

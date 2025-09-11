@@ -378,7 +378,7 @@ where
 pub fn create_invoice_from_channelmanager_with_description_hash<M: Deref, T: Deref, ES: Deref, NS: Deref, SP: Deref, F: Deref, R: Deref, MR: Deref, L: Deref>(
 	channelmanager: &ChannelManager<M, T, ES, NS, SP, F, R, MR, L>, amt_msat: Option<u64>,
 	description_hash: Sha256, invoice_expiry_delta_secs: u32,
-	min_final_cltv_expiry_delta: Option<u16>,
+	min_final_cltv_expiry_delta: Option<u16>, contract_id: Option<ContractId>, amt_rgb: Option<u64>,
 ) -> Result<Bolt11Invoice, SignOrCreationError<()>>
 where
 	M::Target: chain::Watch<<SP::Target as SignerProvider>::EcdsaSigner>,

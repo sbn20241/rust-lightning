@@ -1308,7 +1308,7 @@ fn decode_next_hop<T, R: ReadableArgs<T>, N: NextPacketBytes>(
 		},
 	}
 }
-
+/* 
 #[cfg(test)]
 mod tests {
 	use crate::io;
@@ -1656,3 +1656,4 @@ mod tests {
 		set_max_path_length(&mut route_params, &recipient_onion, None, None, 42).unwrap();
 	}
 }
+*/

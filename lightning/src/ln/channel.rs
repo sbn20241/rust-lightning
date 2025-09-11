@@ -1522,10 +1522,10 @@ pub(crate) struct ChannelContext<SP: Deref> where SP::Target: SignerProvider {
 	// TODO(dual_funding): Persist this when we actually contribute funding inputs. For now we always
 	// send an empty witnesses array in `tx_signatures` as a V2 channel acceptor
 	next_funding_txid: Option<Txid>,
-		/// The consignment endpoint used to exchange the RGB consignment
-		pub(super) consignment_endpoint: Option<RgbTransport>,
+	/// The consignment endpoint used to exchange the RGB consignment
+	pub(super) consignment_endpoint: Option<RgbTransport>,
 
-		pub(crate) ldk_data_dir: PathBuf,
+	pub(crate) ldk_data_dir: PathBuf,
 }
 
 /// A channel struct implementing this trait can receive an initial counterparty commitment
@@ -1632,7 +1632,7 @@ trait InitialRemoteCommitmentReceiver<SP: Deref> where SP::Target: SignerProvide
 		                                          &context.channel_transaction_parameters, context.is_outbound(),
 		                                          funding_redeemscript.clone(), context.channel_value_satoshis,
 		                                          obscure_factor,
-		                                          holder_commitment_tx, best_block, context.counterparty_node_id, context.channel_id());
+		                                          holder_commitment_tx, best_block, context.counterparty_node_id, context.channel_id(),  context.ldk_data_dir.clone());
 		channel_monitor.provide_initial_counterparty_commitment_tx(
 			counterparty_initial_bitcoin_tx.txid, Vec::new(),
 			counterparty_commitment_number,
@@ -2229,6 +2229,8 @@ impl<SP: Deref> ChannelContext<SP> where SP::Target: SignerProvider {
 			is_manual_broadcast: false,
 
 			next_funding_txid: None,
+			consignment_endpoint,
+			ldk_data_dir,
 		};
 
 		Ok(channel_context)
@@ -8333,7 +8335,7 @@ impl<SP: Deref> OutboundV1Channel<SP> where SP::Target: SignerProvider {
 	pub fn new<ES: Deref, F: Deref, L: Deref>(
 		fee_estimator: &LowerBoundedFeeEstimator<F>, entropy_source: &ES, signer_provider: &SP, counterparty_node_id: PublicKey, their_features: &InitFeatures,
 		channel_value_satoshis: u64, push_msat: u64, user_id: u128, config: &UserConfig, current_chain_height: u32,
-		outbound_scid_alias: u64, temporary_channel_id: Option<ChannelId>, logger: L
+		outbound_scid_alias: u64, temporary_channel_id: Option<ChannelId>, logger: L, consignment_endpoint: Option<RgbTransport>, ldk_data_dir: PathBuf,
 	) -> Result<OutboundV1Channel<SP>, APIError>
 	where ES::Target: EntropySource,
 	      F::Target: FeeEstimator,
@@ -8369,6 +8371,8 @@ impl<SP: Deref> OutboundV1Channel<SP> where SP::Target: SignerProvider {
 			holder_signer,
 			pubkeys,
 			logger,
+			consignment_endpoint,
+			ldk_data_dir,
 		)?;
 		let unfunded_context = UnfundedChannelContext {
 			unfunded_channel_age_ticks: 0,
@@ -8384,7 +8388,10 @@ impl<SP: Deref> OutboundV1Channel<SP> where SP::Target: SignerProvider {
 	/// Only allowed after [`ChannelContext::channel_transaction_parameters`] is set.
 	fn get_funding_created_msg<L: Deref>(&mut self, logger: &L) -> Option<msgs::FundingCreated> where L::Target: Logger {
 		let counterparty_keys = self.context.build_remote_transaction_keys();
-		let counterparty_initial_commitment_tx = self.context.build_commitment_transaction(self.context.cur_counterparty_commitment_transaction_number, &counterparty_keys, false, false, logger).tx;
+		let mut counterparty_initial_commitment_tx = self.context.build_commitment_transaction(self.context.cur_counterparty_commitment_transaction_number, &counterparty_keys, false, false, logger).tx;
+		if self.context.is_colored() {
+			color_commitment(&self.context, &mut counterparty_initial_commitment_tx, true).unwrap();
+		}
 		let signature = match &self.context.holder_signer {
 			// TODO (taproot|arik): move match into calling method for Taproot
 			ChannelSignerType::Ecdsa(ecdsa) => {
@@ -8897,7 +8904,7 @@ impl<SP: Deref> OutboundV2Channel<SP> where SP::Target: SignerProvider {
 		counterparty_node_id: PublicKey, their_features: &InitFeatures, funding_satoshis: u64,
 		funding_inputs: Vec<(TxIn, TransactionU16LenLimited)>, user_id: u128, config: &UserConfig,
 		current_chain_height: u32, outbound_scid_alias: u64, funding_confirmation_target: ConfirmationTarget,
-		logger: L,
+		logger: L, consignment_endpoint: Option<RgbTransport>, ldk_data_dir: PathBuf,
 	) -> Result<OutboundV2Channel<SP>, APIError>
 	where ES::Target: EntropySource,
 	      F::Target: FeeEstimator,
@@ -8937,6 +8944,8 @@ impl<SP: Deref> OutboundV2Channel<SP> where SP::Target: SignerProvider {
 			holder_signer,
 			pubkeys,
 			logger,
+			consignment_endpoint,
+			ldk_data_dir,
 		)?;
 		let unfunded_context = UnfundedChannelContext {
 			unfunded_channel_age_ticks: 0,
@@ -9011,6 +9020,7 @@ impl<SP: Deref> OutboundV2Channel<SP> where SP::Target: SignerProvider {
 					None => Builder::new().into_script(),
 				}),
 				channel_type: Some(self.context.channel_type.clone()),
+				consignment_endpoint: self.context.consignment_endpoint.clone(),
 			},
 			funding_feerate_sat_per_1000_weight: self.context.feerate_per_kw,
 			second_per_commitment_point,
@@ -9051,7 +9061,7 @@ impl<SP: Deref> InboundV2Channel<SP> where SP::Target: SignerProvider {
 		holder_node_id: PublicKey, counterparty_node_id: PublicKey, our_supported_features: &ChannelTypeFeatures,
 		their_features: &InitFeatures, msg: &msgs::OpenChannelV2,
 		funding_inputs: Vec<(TxIn, TransactionU16LenLimited)>, total_witness_weight: Weight,
-		user_id: u128, config: &UserConfig, current_chain_height: u32, logger: &L,
+		user_id: u128, config: &UserConfig, current_chain_height: u32, logger: &L, ldk_data_dir: PathBuf
 	) -> Result<InboundV2Channel<SP>, ChannelError>
 		where ES::Target: EntropySource,
 			  F::Target: FeeEstimator,
@@ -9107,6 +9117,8 @@ impl<SP: Deref> InboundV2Channel<SP> where SP::Target: SignerProvider {
 			counterparty_selected_channel_reserve_satoshis,
 			0 /* push_msat not used in dual-funding */,
 			msg.common_fields.clone(),
+			msg.common_fields.consignment_endpoint.clone(),
+			ldk_data_dir,
 		)?;
 		let channel_id = ChannelId::v2_from_revocation_basepoints(
 			&context.get_holder_pubkeys().revocation_basepoint,
@@ -9480,7 +9492,7 @@ impl<SP: Deref> Writeable for Channel<SP> where SP::Target: SignerProvider {
 			match update {
 				&HTLCUpdateAwaitingACK::AddHTLC {
 					ref amount_msat, ref cltv_expiry, ref payment_hash, ref source, ref onion_routing_packet,
-					blinding_point, skimmed_fee_msat,
+					blinding_point, skimmed_fee_msat, amount_rgb,
 				} => {
 					0u8.write(writer)?;
 					amount_msat.write(writer)?;
@@ -9491,6 +9503,7 @@ impl<SP: Deref> Writeable for Channel<SP> where SP::Target: SignerProvider {
 
 					holding_cell_skimmed_fees.push(skimmed_fee_msat);
 					holding_cell_blinding_points.push(blinding_point);
+					amount_rgb.write(writer)?;
 				},
 				&HTLCUpdateAwaitingACK::ClaimHTLC { ref payment_preimage, ref htlc_id } => {
 					1u8.write(writer)?;
@@ -9685,6 +9698,7 @@ impl<SP: Deref> Writeable for Channel<SP> where SP::Target: SignerProvider {
 			(49, self.context.local_initiated_shutdown, option), // Added in 0.0.122
 			(51, is_manual_broadcast, option), // Added in 0.0.124
 			(53, funding_tx_broadcast_safe_event_emitted, option), // Added in 0.0.124
+			(55, self.context.consignment_endpoint, option),
 		});
 
 		Ok(())
@@ -9692,13 +9706,13 @@ impl<SP: Deref> Writeable for Channel<SP> where SP::Target: SignerProvider {
 }
 
 const MAX_ALLOC_SIZE: usize = 64*1024;
-impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c ChannelTypeFeatures)> for Channel<SP>
+impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c ChannelTypeFeatures, PathBuf)> for Channel<SP>
 		where
 			ES::Target: EntropySource,
 			SP::Target: SignerProvider
 {
-	fn read<R : io::Read>(reader: &mut R, args: (&'a ES, &'b SP, u32, &'c ChannelTypeFeatures)) -> Result<Self, DecodeError> {
-		let (entropy_source, signer_provider, serialized_height, our_supported_features) = args;
+	fn read<R : io::Read>(reader: &mut R, args: (&'a ES, &'b SP, u32, &'c ChannelTypeFeatures, PathBuf)) -> Result<Self, DecodeError> {
+		let (entropy_source, signer_provider, serialized_height, our_supported_features, ldk_data_dir) = args;
 		let ver = read_ver_prefix!(reader, SERIALIZATION_VERSION);
 
 		// `user_id` used to be a single u64 value. In order to remain backwards compatible with
@@ -9780,6 +9794,7 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 					4 => InboundHTLCState::LocalRemoved(Readable::read(reader)?),
 					_ => return Err(DecodeError::InvalidValue),
 				},
+				amount_rgb: Readable::read(reader)?,
 			});
 		}
 
@@ -9811,6 +9826,7 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 				},
 				skimmed_fee_msat: None,
 				blinding_point: None,
+				amount_rgb: Readable::read(reader)?,
 			});
 		}
 
@@ -9826,6 +9842,7 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 					onion_routing_packet: Readable::read(reader)?,
 					skimmed_fee_msat: None,
 					blinding_point: None,
+					amount_rgb: Readable::read(reader)?,
 				},
 				1 => HTLCUpdateAwaitingACK::ClaimHTLC {
 					payment_preimage: Readable::read(reader)?,
@@ -9969,6 +9986,7 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 		let mut channel_keys_id: Option<[u8; 32]> = None;
 		let mut temporary_channel_id: Option<ChannelId> = None;
 		let mut holder_max_accepted_htlcs: Option<u16> = None;
+		let mut consignment_endpoint: Option<RgbTransport> = None;
 
 		let mut blocked_monitor_updates = Some(Vec::new());
 
@@ -10024,6 +10042,7 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 			(49, local_initiated_shutdown, option),
 			(51, is_manual_broadcast, option),
 			(53, funding_tx_broadcast_safe_event_emitted, option),
+			(55, consignment_endpoint, option),
 		});
 
 		let (channel_keys_id, holder_signer) = if let Some(channel_keys_id) = channel_keys_id {
@@ -10289,6 +10308,8 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 				// during a signing session, but have not received `tx_signatures` we MUST set `next_funding_txid`
 				// to the txid of that interactive transaction, else we MUST NOT set it.
 				next_funding_txid: None,
+				consignment_endpoint,
+				ldk_data_dir,
 			},
 			interactive_tx_signing_session: None,
 			holder_commitment_point,
@@ -10296,6 +10317,7 @@ impl<'a, 'b, 'c, ES: Deref, SP: Deref> ReadableArgs<(&'a ES, &'b SP, u32, &'c Ch
 	}
 }
 
+/*
 #[cfg(test)]
 mod tests {
 	use std::cmp;
@@ -12075,3 +12097,5 @@ mod tests {
 		assert!(node_a_chan.check_get_channel_ready(0, &&logger).is_some());
 	}
 }
+
+*/

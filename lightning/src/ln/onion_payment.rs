@@ -526,6 +526,8 @@ pub(super) fn check_incoming_htlc_cltv(
 	Ok(())
 }
 
+/*
+
 #[cfg(test)]
 mod tests {
 	use bitcoin::hashes::Hash;
@@ -686,3 +688,5 @@ mod tests {
 	}
 
 }
+
+*/

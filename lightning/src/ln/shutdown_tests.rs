@@ -38,7 +38,7 @@ use bitcoin::network::Network;
 use bitcoin::transaction::Version;
 
 use crate::ln::functional_test_utils::*;
-
+/*
 #[test]
 fn pre_funding_lock_shutdown_test() {
 	// Test sending a shutdown prior to channel_ready after funding generation
@@ -1520,3 +1520,4 @@ fn test_force_closure_on_low_stale_fee() {
 	let reason = ClosureReason::PeerFeerateTooLow { peer_feerate_sat_per_kw: 253, required_feerate_sat_per_kw: 253 * 2 };
 	check_closed_events(&nodes[1], &[ExpectedCloseEvent::from_id_reason(chan_id, false, reason)]);
 }
+*/

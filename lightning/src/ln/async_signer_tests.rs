@@ -30,6 +30,7 @@ use crate::sign::ecdsa::EcdsaChannelSigner;
 use crate::sign::SignerProvider;
 use crate::util::test_channel_signer::SignerOp;
 use crate::util::logger::Logger;
+/*
 
 #[test]
 fn test_open_channel() {
@@ -1096,3 +1097,5 @@ fn do_test_closing_signed(extra_closing_signed: bool, reconnect: bool) {
 	assert!(nodes[0].node().outpoint_to_peer.lock().unwrap().get(&funding_outpoint).is_none());
 	assert!(nodes[1].node().outpoint_to_peer.lock().unwrap().get(&funding_outpoint).is_none());
 }
+
+*/

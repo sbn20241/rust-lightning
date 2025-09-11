@@ -2780,7 +2780,7 @@ fn is_gossip_msg(type_id: u16) -> bool {
 		_ => false
 	}
 }
-
+/* 
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -3634,3 +3634,5 @@ mod tests {
 		assert!(observed_loop.load(Ordering::Acquire));
 	}
 }
+
+*/

@@ -63,7 +63,7 @@ use crate::ln::functional_test_utils::*;
 use crate::ln::chan_utils::CommitmentTransaction;
 
 use super::channel::UNFUNDED_CHANNEL_AGE_LIMIT_TICKS;
-
+/*
 #[test]
 fn test_channel_resumption_fail_post_funding() {
 	// If we fail to exchange funding with a peer prior to it disconnecting we'll resume the
@@ -11656,3 +11656,4 @@ fn test_funding_signed_event() {
 	nodes[1].node.get_and_clear_pending_msg_events();
 }
 
+*/

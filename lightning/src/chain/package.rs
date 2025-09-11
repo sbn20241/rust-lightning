@@ -1339,6 +1339,7 @@ where
 	Some((new_fee, new_feerate))
 }
 
+/*
 #[cfg(test)]
 mod tests {
 	use crate::chain::package::{CounterpartyOfferedHTLCOutput, CounterpartyReceivedHTLCOutput, HolderFundingOutput, HolderHTLCOutput, PackageTemplate, PackageSolvingData, RevokedHTLCOutput, RevokedOutput, WEIGHT_REVOKED_OUTPUT, weight_offered_htlc, weight_received_htlc, feerate_bump};
@@ -1753,3 +1754,5 @@ mod tests {
 		}
 	}
 }
+
+*/

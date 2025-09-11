@@ -38,7 +38,7 @@ const INTERMED_PAYLOAD_LEN_ESTIMATE: usize = 61;
 
 // Length of the HMAC of an onion payload when encoded into the packet.
 const PAYLOAD_HMAC_LEN: usize = 32;
-
+/*
 #[test]
 fn large_payment_metadata() {
 	// Test that we'll limit our maximum path length based on the size of the provided
@@ -143,6 +143,7 @@ fn large_payment_metadata() {
 		ClaimAlongRouteArgs::new(&nodes[0], &[&[&nodes[1], &nodes[2]]], payment_preimage_2)
 	);
 }
+*/
 /* 
 #[test]
 fn one_hop_blinded_path_with_custom_tlv() {

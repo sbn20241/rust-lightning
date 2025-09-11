@@ -2267,13 +2267,13 @@ mod tests {
 		let chain_source: Option<&crate::util::test_utils::TestChainSource> = None;
 		network_graph.update_channel_from_announcement(
 			&signed_announcement, &chain_source).unwrap();
-		update_channel(network_graph, short_channel_id, node_1_key, 0, 1_000, 100);
-		update_channel(network_graph, short_channel_id, node_2_key, 1, 0, 100);
+		update_channel(network_graph, short_channel_id, node_1_key, 0, 1_000, 100, 0);
+		update_channel(network_graph, short_channel_id, node_2_key, 1, 0, 100, 0);
 	}
 
 	fn update_channel(
 		network_graph: &mut NetworkGraph<&TestLogger>, short_channel_id: u64, node_key: SecretKey,
-		channel_flags: u8, htlc_maximum_msat: u64, timestamp: u32,
+		channel_flags: u8, htlc_maximum_msat: u64, timestamp: u32, htlc_maximum_rgb: u64,
 	) {
 		let genesis_hash = ChainHash::using_genesis_block(Network::Testnet);
 		let secp_ctx = Secp256k1::new();
@@ -2289,7 +2289,7 @@ mod tests {
 			fee_base_msat: 1,
 			fee_proportional_millionths: 0,
 			excess_data: Vec::new(),
-			htlc_maximum_rgb: None,
+			htlc_maximum_rgb: htlc_maximum_rgb,
 		};
 		let msghash = hash_to_message!(&Sha256dHash::hash(&unsigned_update.encode()[..])[..]);
 		let signed_update = ChannelUpdate {
