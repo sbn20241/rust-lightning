@@ -334,7 +334,7 @@ where
 		let default_htlc_minimum_msat: u64 = Readable::read(read_cursor)?;
 		let default_fee_base_msat: u32 = Readable::read(read_cursor)?;
 		let default_fee_proportional_millionths: u32 = Readable::read(read_cursor)?;
-		let default_htlc_maximum_msat: u64 = Readable::read(read_cursor)?;
+		let _default_htlc_maximum_msat: u64 = Readable::read(read_cursor)?;
 
 		let mut previous_channel_direction = None;
 
@@ -375,7 +375,7 @@ where
 				cltv_expiry_delta: default_cltv_expiry_delta,
 				htlc_minimum_msat: default_htlc_minimum_msat,
 				htlc_maximum_msat: 0, // unused message in RLN, so this value is irrelevant,
-				htlc_maximum_rgb: default_htlc_maximum_rgb,
+				htlc_maximum_rgb: 0,
 				fee_base_msat: default_fee_base_msat,
 				fee_proportional_millionths: default_fee_proportional_millionths,
 				excess_data: Vec::new(),

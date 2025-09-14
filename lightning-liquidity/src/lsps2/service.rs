@@ -26,7 +26,7 @@ use crate::prelude::{new_hash_map, HashMap, String, ToString, Vec};
 use crate::sync::{Arc, Mutex, MutexGuard, RwLock};
 
 use lightning::events::HTLCDestination;
-use lightning::ln::channelmanager::{AChannelManager, InterceptId};
+use lightning::ln::channelmanager::{AChannelManager, InterceptId, NextHopForward};
 use lightning::ln::msgs::{ErrorAction, LightningError};
 use lightning::ln::types::ChannelId;
 use lightning::util::errors::APIError;
@@ -818,9 +818,10 @@ where
 							Ok(Some(HTLCInterceptedAction::ForwardHTLC(channel_id))) => {
 								self.channel_manager.get_cm().forward_intercepted_htlc(
 									intercept_id,
-									&channel_id,
+									NextHopForward::ChannelId(*counterparty_node_id, &channel_id),
 									*counterparty_node_id,
 									expected_outbound_amount_msat,
+									None,
 								)?;
 							},
 							Ok(Some(HTLCInterceptedAction::ForwardPayment(
@@ -835,9 +836,10 @@ where
 								{
 									self.channel_manager.get_cm().forward_intercepted_htlc(
 										intercept_id,
-										&channel_id,
+										NextHopForward::ChannelId(*counterparty_node_id, &channel_id),
 										*counterparty_node_id,
 										amount_to_forward_msat,
+										None,
 									)?;
 								}
 							},
@@ -908,9 +910,10 @@ where
 												.get_cm()
 												.forward_intercepted_htlc(
 													intercept_id,
-													&channel_id,
+													NextHopForward::ChannelId(*counterparty_node_id, &channel_id),
 													*counterparty_node_id,
 													amount_to_forward_msat,
+													None,
 												)?;
 										}
 									},
@@ -962,9 +965,10 @@ where
 									for htlc in htlcs {
 										self.channel_manager.get_cm().forward_intercepted_htlc(
 											htlc.intercept_id,
-											&channel_id,
+											NextHopForward::ChannelId(*counterparty_node_id, &channel_id),
 											*counterparty_node_id,
 											htlc.expected_outbound_amount_msat,
+											None,
 										)?;
 									}
 								},
@@ -1033,9 +1037,10 @@ where
 								{
 									self.channel_manager.get_cm().forward_intercepted_htlc(
 										intercept_id,
-										&channel_id,
+										NextHopForward::ChannelId(*counterparty_node_id, &channel_id),
 										*counterparty_node_id,
 										amount_to_forward_msat,
+										None,
 									)?;
 								}
 							},
