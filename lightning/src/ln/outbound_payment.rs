@@ -757,8 +757,8 @@ pub(super) struct SendAlongPathArgs<'a> {
 pub(super) struct OutboundPayments {
 	pub(super) pending_outbound_payments: Mutex<HashMap<PaymentId, PendingOutboundPayment>>,
 	awaiting_invoice: AtomicBool,
-	retry_lock: Mutex<()>,
-	ldk_data_dir: PathBuf,
+	pub(super) retry_lock: Mutex<()>,
+	pub(super) ldk_data_dir: PathBuf,
 }
 
 impl OutboundPayments {
@@ -876,7 +876,7 @@ impl OutboundPayments {
 			route_params.max_total_routing_fee_msat = Some(max_fee_msat);
 		}
 		self.send_payment_for_bolt12_invoice_internal(
-			payment_id, payment_hash, None, None, route_params, retry_strategy, router, first_hops,
+			payment_id, payment_hash, None, None, route_params, retry_strategy, router, filtered_first_hops,
 			inflight_htlcs, entropy_source, node_signer, node_id_lookup, secp_ctx, best_block_height,
 			logger, pending_events, send_payment_along_path
 		)
@@ -925,7 +925,7 @@ impl OutboundPayments {
 			payment_metadata: None,
 			custom_tlvs: vec![],
 		};
-		
+
 		let mut filtered_first_hops = first_hops.into_iter().collect::<Vec<_>>();
 		is_payment_rgb(&self.ldk_data_dir, &payment_hash).then(|| {
 			filter_first_hops(&self.ldk_data_dir, &payment_hash, &mut filtered_first_hops)
@@ -988,7 +988,7 @@ impl OutboundPayments {
 		);
 		if let Err(e) = result {
 			self.handle_pay_route_err(
-				e, payment_id, payment_hash, route, route_params, onion_session_privs, router, first_hops,
+				e, payment_id, payment_hash, route, route_params, onion_session_privs, router, filtered_first_hops,
 				&inflight_htlcs, entropy_source, node_signer, best_block_height, logger, pending_events,
 				&send_payment_along_path
 			);

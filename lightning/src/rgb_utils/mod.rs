@@ -9,8 +9,9 @@ use crate::ln::channel::{ChannelContext, ChannelError};
 use crate::ln::channel_state::ChannelDetails;
 use crate::ln::channelmanager::MsgHandleErrInternal;
 use crate::ln::features::ChannelTypeFeatures;
-use crate::ln::types::{ChannelId, PaymentHash};
+use crate::ln::types::{ChannelId};
 use crate::sign::SignerProvider;
+use crate::types::payment::PaymentHash;
 
 use bitcoin::blockdata::transaction::Transaction;
 use bitcoin::hex::DisplayHex;

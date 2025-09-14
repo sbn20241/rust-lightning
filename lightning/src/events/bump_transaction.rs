@@ -13,7 +13,7 @@
 
 use alloc::collections::BTreeMap;
 use core::ops::Deref;
-
+use std::path::PathBuf;
 use crate::chain::chaininterface::{BroadcasterInterface, fee_for_weight};
 use crate::chain::ClaimId;
 use crate::io_extras::sink;
@@ -941,7 +941,7 @@ mod tests {
 				})
 			]),
 		};
-		let signer = KeysManager::new(&[42; 32], 42, 42);
+		let signer = KeysManager::new(&[42; 32], 42, 42, PathBuf::from(""));
 		let logger = TestLogger::new();
 		let handler = BumpTransactionEventHandler::new(&broadcaster, &source, &signer, &logger);
 

@@ -35,7 +35,7 @@ use crate::rgb_utils::{get_rgb_payment_info_path, handle_funding, parse_rgb_paym
 use std::path::PathBuf;
 use rgb_lib::RgbTransport;
 
-
+use rgb_lib::ContractId;
 
 use crate::events::FundingInfo;
 use crate::blinded_path::message::{AsyncPaymentsContext, MessageContext, OffersContext};
@@ -3558,7 +3558,7 @@ where
 			best_block: RwLock::new(params.best_block),
 
 			outbound_scid_aliases: Mutex::new(new_hash_set()),
-			pending_outbound_payments: OutboundPayments::new(ldk_data_dir.clone()),
+			pending_outbound_payments: OutboundPayments::new(HashMap::new(), ldk_data_dir.clone()),
 			forward_htlcs: Mutex::new(new_hash_map()),
 			decode_update_add_htlcs: Mutex::new(new_hash_map()),
 			claimable_payments: Mutex::new(ClaimablePayments { claimable_payments: new_hash_map(), pending_claiming_payments: new_hash_map() }),
@@ -5608,9 +5608,9 @@ where
 			})?;
 
 		let routing = match payment.forward_info.routing {
-			PendingHTLCRouting::Forward { onion_packet, blinded, .. } => {
+			PendingHTLCRouting::Forward { onion_packet, blinded, incoming_cltv_expiry, .. } => {
 				PendingHTLCRouting::Forward {
-					onion_packet, blinded, short_channel_id: next_hop_scid
+					onion_packet, blinded, short_channel_id: next_hop_scid, incoming_cltv_expiry: incoming_cltv_expiry
 				}
 			},
 			_ => unreachable!() // Only `PendingHTLCRouting::Forward`s are intercepted
@@ -5980,7 +5980,6 @@ where
 									phantom_shared_secret: None,
 									blinded_failure: blinded.map(|b| b.failure),
 									cltv_expiry: incoming_cltv_expiry,
-									htlc_value_rgb: prev_htlc_value_rgb,
 								});
 								let next_blinding_point = blinded.and_then(|b| {
 									b.next_blinding_override.or_else(|| {
@@ -6155,6 +6154,7 @@ where
 										phantom_shared_secret,
 										blinded_failure,
 										cltv_expiry: Some(cltv_expiry),
+										htlc_value_rgb: prev_htlc_value_rgb,
 									},
 									// We differentiate the received value from the sender intended value
 									// if possible so that we don't prematurely mark MPP payments complete
@@ -9905,20 +9905,10 @@ pub struct Bolt11InvoiceParameters {
 	/// Uses the payment hash if set. This may be useful if you're building an on-chain swap or
 	/// involving another protocol where the payment hash is also involved outside the scope of
 	/// lightning.
-	pub payment_hash: Option<PaymentHash>
+	pub payment_hash: Option<PaymentHash>,
 
-	/// The RGB contract ID used in the invoice. If not set, a contract ID will be generated using a
-	/// preimage that can be reproduced by [`ChannelManager`] without storing any state.
-	///
-	/// Uses the contract ID if set. This may be useful if you're building an on-chain swap or
-	/// involving another protocol where the contract ID is also involved outside the scope of
 	pub contract_id: Option<ContractId>,
 
-	/// The RGB amount used in the invoice. If not set, a amount will be generated using a
-	/// preimage that can be reproduced by [`ChannelManager`] without storing any state.
-	///
-	/// Uses the amount if set. This may be useful if you're building an on-chain swap or
-	/// involving another protocol where the amount is also involved outside the scope of
 	pub amt_rgb: Option<u64>,
 }
 
@@ -9930,6 +9920,8 @@ impl Default for Bolt11InvoiceParameters {
 			invoice_expiry_delta_secs: None,
 			min_final_cltv_expiry_delta: None,
 			payment_hash: None,
+			contract_id: None,
+			amt_rgb: None,
 		}
 	}
 }
@@ -13254,7 +13246,7 @@ where
 		entropy_source: ES, node_signer: NS, signer_provider: SP, fee_estimator: F,
 		chain_monitor: M, tx_broadcaster: T, router: R, message_router: MR, logger: L,
 		default_config: UserConfig,
-		mut channel_monitors: Vec<&'a ChannelMonitor<<SP::Target as SignerProvider>::EcdsaSigner>>,
+		mut channel_monitors: Vec<&'a ChannelMonitor<<SP::Target as SignerProvider>::EcdsaSigner>>,ldk_data_dir: PathBuf
 	) -> Self {
 		Self {
 			entropy_source, node_signer, signer_provider, fee_estimator, chain_monitor,
@@ -13262,6 +13254,7 @@ where
 			channel_monitors: hash_map_from_iter(
 				channel_monitors.drain(..).map(|monitor| { (monitor.get_funding_txo().0, monitor) })
 			),
+			ldk_data_dir,
 		}
 	}
 }
@@ -13657,11 +13650,8 @@ where
 			}
 			pending_outbound_payments = Some(outbounds);
 		}
-		let pending_outbounds = OutboundPayments {
-			pending_outbound_payments: Mutex::new(pending_outbound_payments.unwrap()),
-			retry_lock: Mutex::new(()),
-			ldk_data_dir: args.ldk_data_dir.clone(),
-		};
+		let pending_outbounds = OutboundPayments::new(pending_outbound_payments.unwrap(), args.ldk_data_dir.clone());
+
 
 		// We have to replay (or skip, if they were completed after we wrote the `ChannelManager`)
 		// each `ChannelMonitorUpdate` in `in_flight_monitor_updates`. After doing so, we have to

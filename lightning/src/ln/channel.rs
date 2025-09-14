@@ -5077,7 +5077,7 @@ impl<SP: Deref> Channel<SP> where
 
 		let keys = self.context.build_holder_transaction_keys(self.holder_commitment_point.current_point());
 
-		let mut commitment_stats = self.context.build_commitment_transaction(self.context.holder_commitment_point.transaction_number(), &keys, true, false, logger);
+		let mut commitment_stats = self.context.build_commitment_transaction(self.holder_commitment_point.transaction_number(), &keys, true, false, logger);
 		if self.context.is_colored() {
 			color_commitment(&self.context, &mut commitment_stats.tx, false)?;
 		}		

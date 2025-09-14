@@ -375,7 +375,7 @@ impl<'a> chain::Watch<TestChannelSigner> for TestChainMonitor<'a> {
 		let mut w = TestVecWriter(Vec::new());
 		monitor.write(&mut w).unwrap();
 		let new_monitor = <(BlockHash, channelmonitor::ChannelMonitor<TestChannelSigner>)>::read(
-			&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager)).unwrap().1;
+			&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager, None)).unwrap().1;
 		assert!(new_monitor == monitor);
 		self.latest_monitor_update_id.lock().unwrap().insert(monitor.channel_id(),
 			(funding_txo, monitor.get_latest_update_id(), monitor.get_latest_update_id()));
@@ -948,6 +948,7 @@ fn get_dummy_channel_announcement(short_chan_id: u64) -> msgs::ChannelAnnounceme
 		bitcoin_key_1: NodeId::from_pubkey(&PublicKey::from_secret_key(&secp_ctx, &node_1_btckey)),
 		bitcoin_key_2: NodeId::from_pubkey(&PublicKey::from_secret_key(&secp_ctx, &node_2_btckey)),
 		excess_data: Vec::new(),
+		contract_id: None,
 	};
 
 	unsafe {
@@ -978,6 +979,7 @@ fn get_dummy_channel_update(short_chan_id: u64) -> msgs::ChannelUpdate {
 			fee_base_msat: 0,
 			fee_proportional_millionths: 0,
 			excess_data: vec![],
+			htlc_maximum_rgb: 0,
 		}
 	}
 }
@@ -1332,7 +1334,7 @@ impl TestKeysInterface {
 	pub fn new(seed: &[u8; 32], network: Network) -> Self {
 		let now = Duration::from_secs(genesis_block(network).header.time as u64);
 		Self {
-			backing: sign::PhantomKeysManager::new(seed, now.as_secs(), now.subsec_nanos(), seed),
+			backing: sign::PhantomKeysManager::new(seed, now.as_secs(), now.subsec_nanos(), seed, PathBuf::from("")),
 			override_random_bytes: Mutex::new(None),
 			disable_revocation_policy_check: false,
 			enforcement_states: Mutex::new(new_hash_map()),

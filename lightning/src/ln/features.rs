@@ -12,7 +12,7 @@
 use lightning_types::features::{InitFeatures, NodeFeatures, ChannelFeatures};
 use lightning_types::features::{Bolt11InvoiceFeatures, OfferFeatures, InvoiceRequestFeatures};
 use lightning_types::features::{Bolt12InvoiceFeatures, BlindedHopFeatures};
-use lightning_types::features::ChannelTypeFeatures;
+pub use lightning_types::features::ChannelTypeFeatures;
 
 #[allow(unused_imports)]
 use crate::prelude::*;
