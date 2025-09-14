@@ -4181,7 +4181,7 @@ impl<Signer: EcdsaChannelSigner> ChannelMonitorImpl<Signer> {
 		// Produce actionable events from on-chain events having reached their threshold.
 		for entry in onchain_events_reaching_threshold_conf {
 			match entry.event {
-				OnchainEvent::HTLCUpdate { ref source, payment_hash, htlc_value_satoshis, htlc_value_rgb, commitment_tx_output_idx } => {
+				OnchainEvent::HTLCUpdate { source, payment_hash, htlc_value_satoshis, htlc_value_rgb, commitment_tx_output_idx } => {
 					// Check for duplicate HTLC resolutions.
 					#[cfg(debug_assertions)]
 					{
@@ -4195,7 +4195,7 @@ impl<Signer: EcdsaChannelSigner> ChannelMonitorImpl<Signer> {
 							"A matured HTLC transaction conflicts with a maturing one; failed to \
 							 call either transaction_unconfirmed for the conflicting transaction \
 							 or block_disconnected for a block containing it.");
-						matured_htlcs.push(&source);
+						matured_htlcs.push(source.clone());
 					}
 
 					log_debug!(logger, "HTLC {} failure update in {} has got enough confirmations to be passed upstream",

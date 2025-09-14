@@ -19,7 +19,7 @@ pub(crate) trait LockTestExt<'a> {
 	/// possible.
 	fn unsafe_well_ordered_double_lock_self(&'a self) -> Self::ExclLock;
 }
-pub use crate::util::scid_utils::IS_SWAP_SCID;
+
 #[cfg(all(feature = "std", not(ldk_bench), test))]
 mod debug_sync;
 #[cfg(all(feature = "std", not(ldk_bench), test))]

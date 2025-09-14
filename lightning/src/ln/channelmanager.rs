@@ -3558,7 +3558,7 @@ where
 			best_block: RwLock::new(params.best_block),
 
 			outbound_scid_aliases: Mutex::new(new_hash_set()),
-			pending_outbound_payments: OutboundPayments::new(HashMap::new(), ldk_data_dir.clone()),
+			pending_outbound_payments: OutboundPayments::new(new_hash_map(), ldk_data_dir.clone()),
 			forward_htlcs: Mutex::new(new_hash_map()),
 			decode_update_add_htlcs: Mutex::new(new_hash_map()),
 			claimable_payments: Mutex::new(ClaimablePayments { claimable_payments: new_hash_map(), pending_claiming_payments: new_hash_map() }),
@@ -4697,7 +4697,7 @@ where
 				.and_then(|path| path.hops.last().map(|hop| (hop.pubkey, hop.cltv_expiry_delta as u32)))
 				.unwrap_or_else(|| (PublicKey::from_slice(&[2; 32]).unwrap(), MIN_FINAL_CLTV_EXPIRY_DELTA as u32));
 			let dummy_payment_params = PaymentParameters::from_node_id(payee_node_id, cltv_delta);
-			RouteParameters::from_payment_params_and_value(dummy_payment_params, route.get_total_amount())
+			RouteParameters::from_payment_params_and_value(dummy_payment_params, route.get_total_amount(), None)
 		});
 		if route.route_params.is_none() { route.route_params = Some(route_params.clone()); }
 		let router = FixedRouter::new(route);
@@ -5964,7 +5964,7 @@ where
 									incoming_shared_secret, payment_hash, outgoing_amt_msat, outgoing_cltv_value,
 									routing: PendingHTLCRouting::Forward {
 										ref onion_packet, blinded, incoming_cltv_expiry, ..
-									}, skimmed_fee_msat, ..
+									}, skimmed_fee_msat, outgoing_amount_rgb, ..
 								},
 							}) => {
 								let htlc_source = HTLCSource::PreviousHopData(HTLCPreviousHopData {
@@ -9906,9 +9906,18 @@ pub struct Bolt11InvoiceParameters {
 	/// involving another protocol where the payment hash is also involved outside the scope of
 	/// lightning.
 	pub payment_hash: Option<PaymentHash>,
-
+	/// The RGB contract ID used in the invoice. If not set, a contract ID will be generated using a
+	/// preimage that can be reproduced by [`ChannelManager`] without storing any state.
+	///
+	/// Uses the contract ID if set. This may be useful if you're building an on-chain swap or
+	/// involving another protocol where the contract ID is also involved outside the scope of
 	pub contract_id: Option<ContractId>,
 
+	/// The RGB amount used in the invoice. If not set, a amount will be generated using a
+	/// preimage that can be reproduced by [`ChannelManager`] without storing any state.
+	///
+	/// Uses the amount if set. This may be useful if you're building an on-chain swap or
+	/// involving another protocol where the amount is also involved outside the scope of
 	pub amt_rgb: Option<u64>,
 }
 
@@ -16046,7 +16055,7 @@ pub mod bench {
 
 				$node_a.send_payment(payment_hash, RecipientOnionFields::secret_only(payment_secret),
 					PaymentId(payment_hash.0),
-					RouteParameters::from_payment_params_and_value(payment_params, 10_000),
+					RouteParameters::from_payment_params_and_value(payment_params, 10_000, None),
 					Retry::Attempts(0)).unwrap();
 				let payment_event = SendEvent::from_event($node_a.get_and_clear_pending_msg_events().pop().unwrap());
 				$node_b.handle_update_add_htlc($node_a.get_our_node_id(), &payment_event.msgs[0]);
