@@ -3614,8 +3614,8 @@ mod tests {
 		};
 
 		let capacity_msat = 100_000_000_000;
-		update_channel(&mut network_graph, 42, source_privkey(), 0, capacity_msat, 200);
-		update_channel(&mut network_graph, 42, target_privkey(), 1, capacity_msat, 200);
+		update_channel(&mut network_graph, 42, source_privkey(), 0, capacity_msat, 200, 0);
+		update_channel(&mut network_graph, 42, target_privkey(), 1, capacity_msat, 200, 0);
 
 		let mut scorer = ProbabilisticScorer::new(decay_params, &network_graph, &logger);
 		let source = source_node_id();

@@ -9776,7 +9776,7 @@ This indicates a bug inside LDK. Please report this error at https://github.com/
 	) -> Result<Bolt11Invoice, SignOrCreationError<()>> {
 		let Bolt11InvoiceParameters {
 			amount_msats, description, invoice_expiry_delta_secs, min_final_cltv_expiry_delta,
-			payment_hash,
+			payment_hash, contract_id, amt_rgb,
 		} = params;
 
 		let currency =
@@ -9850,6 +9850,14 @@ This indicates a bug inside LDK. Please report this error at https://github.com/
 			invoice = invoice.amount_milli_satoshis(amount_msats);
 		}
 
+	
+		if let Some(cid) = contract_id {
+			invoice = invoice.rgb_contract_id(cid);
+		}
+		if let Some(amt) = amt_rgb {
+			invoice = invoice.rgb_amount(amt);
+		}
+
 		let channels = self.list_channels();
 		let route_hints = super::invoice_utils::sort_and_filter_channels(channels, amount_msats, &self.logger);
 		for hint in route_hints {
@@ -9898,6 +9906,20 @@ pub struct Bolt11InvoiceParameters {
 	/// involving another protocol where the payment hash is also involved outside the scope of
 	/// lightning.
 	pub payment_hash: Option<PaymentHash>
+
+	/// The RGB contract ID used in the invoice. If not set, a contract ID will be generated using a
+	/// preimage that can be reproduced by [`ChannelManager`] without storing any state.
+	///
+	/// Uses the contract ID if set. This may be useful if you're building an on-chain swap or
+	/// involving another protocol where the contract ID is also involved outside the scope of
+	pub contract_id: Option<ContractId>,
+
+	/// The RGB amount used in the invoice. If not set, a amount will be generated using a
+	/// preimage that can be reproduced by [`ChannelManager`] without storing any state.
+	///
+	/// Uses the amount if set. This may be useful if you're building an on-chain swap or
+	/// involving another protocol where the amount is also involved outside the scope of
+	pub amt_rgb: Option<u64>,
 }
 
 impl Default for Bolt11InvoiceParameters {

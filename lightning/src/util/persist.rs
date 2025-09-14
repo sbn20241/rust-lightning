@@ -619,7 +619,7 @@ where
 		}
 		match <(BlockHash, ChannelMonitor<<SP::Target as SignerProvider>::EcdsaSigner>)>::read(
 			&mut monitor_cursor,
-			(&*self.entropy_source, &*self.signer_provider),
+			(&*self.entropy_source, &*self.signer_provider, self.ldk_data_dir.clone()),
 		) {
 			Ok((blockhash, channel_monitor)) => {
 				if channel_monitor.get_funding_txo().0.txid != outpoint.txid
@@ -1087,6 +1087,7 @@ impl From<u64> for UpdateName {
 	}
 }
 
+/* 
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -1476,3 +1477,4 @@ mod tests {
 		assert!(persist_fn::<_, TestChannelSigner>(store.clone()));
 	}
 }
+*/

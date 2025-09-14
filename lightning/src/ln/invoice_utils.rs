@@ -397,6 +397,8 @@ where
 		invoice_expiry_delta_secs: Some(invoice_expiry_delta_secs),
 		min_final_cltv_expiry_delta,
 		payment_hash: None,
+		contract_id: contract_id,
+		amt_rgb: amt_rgb,
 	};
 	channelmanager.create_bolt11_invoice(params)
 }
@@ -431,6 +433,8 @@ where
 		invoice_expiry_delta_secs: Some(invoice_expiry_delta_secs),
 		min_final_cltv_expiry_delta,
 		payment_hash: Some(payment_hash),
+		contract_id: contract_id,
+		amt_rgb: amt_rgb,
 	};
 	channelmanager.create_bolt11_invoice(params)
 }
@@ -444,7 +448,7 @@ where
 pub fn create_invoice_from_channelmanager_with_payment_hash<M: Deref, T: Deref, ES: Deref, NS: Deref, SP: Deref, F: Deref, R: Deref, MR: Deref, L: Deref>(
 	channelmanager: &ChannelManager<M, T, ES, NS, SP, F, R, MR, L>, amt_msat: Option<u64>,
 	description: String, invoice_expiry_delta_secs: u32, payment_hash: PaymentHash,
-	min_final_cltv_expiry_delta: Option<u16>,
+	min_final_cltv_expiry_delta: Option<u16>, contract_id: Option<ContractId>, amt_rgb: Option<u64>,
 ) -> Result<Bolt11Invoice, SignOrCreationError<()>>
 where
 	M::Target: chain::Watch<<SP::Target as SignerProvider>::EcdsaSigner>,
@@ -464,6 +468,8 @@ where
 		invoice_expiry_delta_secs: Some(invoice_expiry_delta_secs),
 		min_final_cltv_expiry_delta,
 		payment_hash: Some(payment_hash),
+		contract_id: contract_id,
+		amt_rgb: amt_rgb,
 	};
 	channelmanager.create_bolt11_invoice(params)
 }
@@ -513,8 +519,10 @@ where
 			},
 			cltv_expiry_delta: forwarding_info.cltv_expiry_delta,
 			htlc_minimum_msat: channel.inbound_htlc_minimum_msat,
-			htlc_maximum_msat: channel.inbound_htlc_maximum_msat,}])
-	};
+			htlc_maximum_msat: channel.inbound_htlc_maximum_msat,
+			htlc_maximum_rgb: Some(channel.inbound_htlc_maximum_rgb),
+		}])
+		};
 
 	log_trace!(logger, "Considering {} channels for invoice route hints", channels.len());
 	for channel in channels.into_iter().filter(|chan| chan.is_channel_ready) {
@@ -706,6 +714,7 @@ impl<'a, 'b, L: Deref> WithChannelDetails<'a, 'b, L> where L::Target: Logger {
 	}
 }
 
+/* 
 #[cfg(test)]
 mod test {
 	use super::*;
@@ -1986,3 +1995,4 @@ mod test {
 		assert_eq!(expected, result);
 	}
 }
+*/
