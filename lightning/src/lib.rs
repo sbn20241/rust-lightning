@@ -75,7 +75,7 @@ pub mod blinded_path;
 pub mod events;
 
 pub(crate) mod crypto;
-pub(crate) mod rgb_utils;
+pub mod rgb_utils;
 
 /// Extension of the bitcoin::io module
 pub mod io;
