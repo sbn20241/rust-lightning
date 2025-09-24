@@ -228,7 +228,7 @@ mod test {
 			&self, recipient: PublicKey, context: MessageContext, _peers: Vec<PublicKey>,
 			secp_ctx: &Secp256k1<T>,
 		) -> Result<Vec<BlindedMessagePath>, ()> {
-			let keys = KeysManager::new(&[0; 32], 42, 43);
+			let keys = KeysManager::new(&[0; 32], 42, 43, std::path::PathBuf::from(""));
 			Ok(vec![BlindedMessagePath::one_hop(recipient, context, &keys, secp_ctx).unwrap()])
 		}
 	}
@@ -265,7 +265,7 @@ mod test {
 	}
 
 	fn create_resolver() -> (impl AOnionMessenger, PublicKey) {
-		let resolver_keys = Arc::new(KeysManager::new(&[99; 32], 42, 43));
+		let resolver_keys = Arc::new(KeysManager::new(&[99; 32], 42, 43, std::path::PathBuf::from("")));
 		let resolver_logger = TestLogger { node: "resolver" };
 		let resolver = OMDomainResolver::ignoring_incoming_proofs("8.8.8.8:53".parse().unwrap());
 		let resolver = Arc::new(resolver);
@@ -304,7 +304,7 @@ mod test {
 		let payment_id = PaymentId([42; 32]);
 		let name = HumanReadableName::from_encoded("matt@mattcorallo.com").unwrap();
 
-		let payer_keys = Arc::new(KeysManager::new(&[2; 32], 42, 43));
+		let payer_keys = Arc::new(KeysManager::new(&[2; 32], 42, 43, std::path::PathBuf::from("")));
 		let payer_logger = TestLogger { node: "payer" };
 		let payer_id = payer_keys.get_node_id(Recipient::Node).unwrap();
 		let payer = Arc::new(URIResolver {

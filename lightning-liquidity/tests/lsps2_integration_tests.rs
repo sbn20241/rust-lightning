@@ -49,6 +49,7 @@ fn create_jit_invoice(
 		cltv_expiry_delta: cltv_expiry_delta as u16,
 		htlc_minimum_msat: None,
 		htlc_maximum_msat: None,
+		htlc_maximum_rgb: None,
 	}]);
 
 	let payment_hash = sha256::Hash::from_slice(&payment_hash.0).map_err(|e| {

@@ -411,7 +411,7 @@ pub(crate) fn create_liquidity_node(
 	let scorer = Arc::new(LockingWrapper::new(TestScorer::new()));
 	let now = Duration::from_secs(genesis_block.header.time as u64);
 	let seed = [i as u8; 32];
-	let keys_manager = Arc::new(KeysManager::new(&seed, now.as_secs(), now.subsec_nanos()));
+	let keys_manager = Arc::new(KeysManager::new(&seed, now.as_secs(), now.subsec_nanos(), std::path::PathBuf::from("")));
 	let router = Arc::new(DefaultRouter::new(
 		Arc::clone(&network_graph),
 		logger.clone(),
@@ -446,6 +446,7 @@ pub(crate) fn create_liquidity_node(
 		UserConfig::default(),
 		chain_params,
 		genesis_block.header.time,
+		std::path::PathBuf::from(""),
 	));
 	let p2p_gossip_sync = Arc::new(P2PGossipSync::new(
 		network_graph.clone(),

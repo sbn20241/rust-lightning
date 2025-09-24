@@ -47,6 +47,7 @@ use crate::util::logger::{Logger, Record};
 use crate::util::ser::{Readable, ReadableArgs, Writer, Writeable};
 use crate::util::persist::KVStore;
 
+use std::path::PathBuf;
 use bitcoin::amount::Amount;
 use bitcoin::constants::ChainHash;
 use bitcoin::constants::genesis_block;
@@ -322,7 +323,7 @@ impl SignerProvider for OnlyReadsKeysInterface {
 	fn derive_channel_signer(&self, _channel_value_satoshis: u64, _channel_keys_id: [u8; 32]) -> Self::EcdsaSigner { unreachable!(); }
 
 	fn read_chan_signer(&self, mut reader: &[u8]) -> Result<Self::EcdsaSigner, msgs::DecodeError> {
-		let inner: InMemorySigner = ReadableArgs::read(&mut reader, self)?;
+		let inner: InMemorySigner = ReadableArgs::read(&mut reader, (self, PathBuf::from("")))?;
 		let state = Arc::new(Mutex::new(EnforcementState::new()));
 
 		Ok(TestChannelSigner::new_with_revoked(
@@ -375,7 +376,7 @@ impl<'a> chain::Watch<TestChannelSigner> for TestChainMonitor<'a> {
 		let mut w = TestVecWriter(Vec::new());
 		monitor.write(&mut w).unwrap();
 		let new_monitor = <(BlockHash, channelmonitor::ChannelMonitor<TestChannelSigner>)>::read(
-			&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager, None)).unwrap().1;
+			&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager, PathBuf::from(""))).unwrap().1;
 		assert!(new_monitor == monitor);
 		self.latest_monitor_update_id.lock().unwrap().insert(monitor.channel_id(),
 			(funding_txo, monitor.get_latest_update_id(), monitor.get_latest_update_id()));
@@ -410,7 +411,7 @@ impl<'a> chain::Watch<TestChannelSigner> for TestChainMonitor<'a> {
 		w.0.clear();
 		monitor.write(&mut w).unwrap();
 		let new_monitor = <(BlockHash, channelmonitor::ChannelMonitor<TestChannelSigner>)>::read(
-			&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager)).unwrap().1;
+			&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager, PathBuf::from(""))).unwrap().1;
 		if let Some(chan_id) = self.expect_monitor_round_trip_fail.lock().unwrap().take() {
 			assert_eq!(chan_id, channel_id);
 			assert!(new_monitor != *monitor);
@@ -1307,7 +1308,7 @@ impl SignerProvider for TestKeysInterface {
 	fn read_chan_signer(&self, buffer: &[u8]) -> Result<Self::EcdsaSigner, msgs::DecodeError> {
 		let mut reader = io::Cursor::new(buffer);
 
-		let inner: InMemorySigner = ReadableArgs::read(&mut reader, self)?;
+		let inner: InMemorySigner = ReadableArgs::read(&mut reader, (self, PathBuf::from("")))?;
 		let state = self.make_enforcement_state_cell(inner.commitment_seed);
 
 		Ok(TestChannelSigner::new_with_revoked(

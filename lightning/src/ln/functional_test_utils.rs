@@ -693,8 +693,8 @@ impl<'a, 'b, 'c> Drop for Node<'a, 'b, 'c> {
 				for (outpoint, _channel_id) in self.chain_monitor.chain_monitor.list_monitors() {
 					let mut w = test_utils::TestVecWriter(Vec::new());
 					self.chain_monitor.chain_monitor.get_monitor(outpoint).unwrap().write(&mut w).unwrap();
-					let (_, deserialized_monitor) = <(BlockHash, ChannelMonitor<TestChannelSigner>)>::read(
-						&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager)).unwrap();
+				let (_, deserialized_monitor) = <(BlockHash, ChannelMonitor<TestChannelSigner>)>::read(
+					&mut io::Cursor::new(&w.0), (self.keys_manager, self.keys_manager, std::path::PathBuf::from(""))).unwrap();
 					deserialized_monitors.push(deserialized_monitor);
 				}
 			}
@@ -727,6 +727,7 @@ impl<'a, 'b, 'c> Drop for Node<'a, 'b, 'c> {
 					tx_broadcaster: &broadcaster,
 					logger: &self.logger,
 					channel_monitors,
+					ldk_data_dir: std::path::PathBuf::from(""),
 				}).unwrap();
 			}
 
@@ -1139,7 +1140,7 @@ pub fn _reload_node<'a, 'b, 'c>(node: &'a Node<'a, 'b, 'c>, default_config: User
 	for encoded in monitors_encoded {
 		let mut monitor_read = &encoded[..];
 		let (_, monitor) = <(BlockHash, ChannelMonitor<TestChannelSigner>)>
-			::read(&mut monitor_read, (node.keys_manager, node.keys_manager)).unwrap();
+			::read(&mut monitor_read, (node.keys_manager, node.keys_manager, std::path::PathBuf::from(""))).unwrap();
 		assert!(monitor_read.is_empty());
 		monitors_read.push(monitor);
 	}
@@ -1162,6 +1163,7 @@ pub fn _reload_node<'a, 'b, 'c>(node: &'a Node<'a, 'b, 'c>, default_config: User
 			tx_broadcaster: node.tx_broadcaster,
 			logger: node.logger,
 			channel_monitors,
+			ldk_data_dir: std::path::PathBuf::from(""),
 		}).unwrap()
 	};
 	assert!(node_read.is_empty());
@@ -1318,7 +1320,7 @@ pub fn open_zero_conf_channel<'a, 'b, 'c, 'd>(initiator: &'a Node<'b, 'c, 'd>, r
 	let initiator_channels = initiator.node.list_usable_channels().len();
 	let receiver_channels = receiver.node.list_usable_channels().len();
 
-	initiator.node.create_channel(receiver.node.get_our_node_id(), 100_000, 10_001, 42, None, initiator_config).unwrap();
+	initiator.node.create_channel(receiver.node.get_our_node_id(), 100_000, 10_001, 42, None, initiator_config, None).unwrap();
 	let open_channel = get_event_msg!(initiator, MessageSendEvent::SendOpenChannel, receiver.node.get_our_node_id());
 
 	receiver.node.handle_open_channel(initiator.node.get_our_node_id(), &open_channel);
@@ -1384,7 +1386,7 @@ pub fn open_zero_conf_channel<'a, 'b, 'c, 'd>(initiator: &'a Node<'b, 'c, 'd>, r
 }
 
 pub fn exchange_open_accept_chan<'a, 'b, 'c>(node_a: &Node<'a, 'b, 'c>, node_b: &Node<'a, 'b, 'c>, channel_value: u64, push_msat: u64) -> ChannelId {
-	let create_chan_id = node_a.node.create_channel(node_b.node.get_our_node_id(), channel_value, push_msat, 42, None, None).unwrap();
+	let create_chan_id = node_a.node.create_channel(node_b.node.get_our_node_id(), channel_value, push_msat, 42, None, None, None).unwrap();
 	let open_channel_msg = get_event_msg!(node_a, MessageSendEvent::SendOpenChannel, node_b.node.get_our_node_id());
 	assert_eq!(open_channel_msg.common_fields.temporary_channel_id, create_chan_id);
 	assert_eq!(node_a.node.list_channels().iter().find(|channel| channel.channel_id == create_chan_id).unwrap().user_channel_id, 42);
@@ -1506,7 +1508,7 @@ pub fn create_announced_chan_between_nodes_with_value<'a, 'b, 'c: 'd, 'd>(nodes:
 pub fn create_unannounced_chan_between_nodes_with_value<'a, 'b, 'c, 'd>(nodes: &'a Vec<Node<'b, 'c, 'd>>, a: usize, b: usize, channel_value: u64, push_msat: u64) -> (msgs::ChannelReady, Transaction) {
 	let mut no_announce_cfg = test_default_channel_config();
 	no_announce_cfg.channel_handshake_config.announce_for_forwarding = false;
-	nodes[a].node.create_channel(nodes[b].node.get_our_node_id(), channel_value, push_msat, 42, None, Some(no_announce_cfg)).unwrap();
+	nodes[a].node.create_channel(nodes[b].node.get_our_node_id(), channel_value, push_msat, 42, None, Some(no_announce_cfg), None).unwrap();
 	let open_channel = get_event_msg!(nodes[a], MessageSendEvent::SendOpenChannel, nodes[b].node.get_our_node_id());
 	nodes[b].node.handle_open_channel(nodes[a].node.get_our_node_id(), &open_channel);
 	let accept_channel = get_event_msg!(nodes[b], MessageSendEvent::SendAcceptChannel, nodes[a].node.get_our_node_id());
@@ -3100,7 +3102,7 @@ pub const TEST_FINAL_CLTV: u32 = 70;
 pub fn route_payment<'a, 'b, 'c>(origin_node: &Node<'a, 'b, 'c>, expected_route: &[&Node<'a, 'b, 'c>], recv_value: u64) -> (PaymentPreimage, PaymentHash, PaymentSecret, PaymentId) {
 	let payment_params = PaymentParameters::from_node_id(expected_route.last().unwrap().node.get_our_node_id(), TEST_FINAL_CLTV)
 		.with_bolt11_features(expected_route.last().unwrap().node.bolt11_invoice_features()).unwrap();
-	let route_params = RouteParameters::from_payment_params_and_value(payment_params, recv_value);
+	let route_params = RouteParameters::from_payment_params_and_value(payment_params, recv_value, None);
 	let route = get_route(origin_node, &route_params).unwrap();
 	assert_eq!(route.paths.len(), 1);
 	assert_eq!(route.paths[0].hops.len(), expected_route.len());
@@ -3312,7 +3314,7 @@ pub fn create_node_chanmgrs<'a, 'b>(node_count: usize, cfgs: &'a Vec<NodeCfg<'b>
 			best_block: BestBlock::from_network(network),
 		};
 		let node = ChannelManager::new(cfgs[i].fee_estimator, &cfgs[i].chain_monitor, cfgs[i].tx_broadcaster, &cfgs[i].router, &cfgs[i].message_router, cfgs[i].logger, cfgs[i].keys_manager,
-			cfgs[i].keys_manager, cfgs[i].keys_manager, if node_config[i].is_some() { node_config[i].clone().unwrap() } else { test_default_channel_config() }, params, genesis_block.header.time);
+			cfgs[i].keys_manager, cfgs[i].keys_manager, if node_config[i].is_some() { node_config[i].clone().unwrap() } else { test_default_channel_config() }, params, genesis_block.header.time, std::path::PathBuf::from(""));
 		chanmgrs.push(node);
 	}
 
@@ -3944,6 +3946,7 @@ pub fn create_batch_channel_funding<'a, 'b, 'c>(
 			other_node.node.get_our_node_id(), *channel_value_satoshis, *push_msat, *user_channel_id,
 			None,
 			*override_config,
+			None,
 		).unwrap();
 		let open_channel_msg = get_event_msg!(funding_node, MessageSendEvent::SendOpenChannel, other_node.node.get_our_node_id());
 		other_node.node.handle_open_channel(funding_node.node.get_our_node_id(), &open_channel_msg);

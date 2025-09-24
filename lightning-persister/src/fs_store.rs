@@ -568,7 +568,7 @@ mod tests {
 		// Check that read_channel_monitors() returns error if monitors/ is not a
 		// directory.
 		assert!(
-			read_channel_monitors(&store, nodes[0].keys_manager, nodes[0].keys_manager).is_err()
+			read_channel_monitors(&store, nodes[0].keys_manager, nodes[0].keys_manager, std::path::PathBuf::from("")).is_err()
 		);
 	}
 
